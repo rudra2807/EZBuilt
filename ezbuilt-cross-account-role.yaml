@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Create cross-account IAM role for EZBuilt platform to manage EC2 and networking in this AWS account."
+
+Parameters:
+  ExternalId:
+    Type: String
+    Description: "External ID that the platform uses when calling sts:AssumeRole. Usually prefilled by the platform."
+    MinLength: 8
+    MaxLength: 128
+    NoEcho: true
+
+  RoleName:
+    Type: String
+    Description: "Name of the IAM Role to create for cross account access."
+    Default: "EzBuiltTerraformRole"
+
+Resources:
+  EzBuiltTerraformRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Ref RoleName
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              # Your platform account ID is baked in here
+              AWS: "arn:aws:iam::<YOUR_PLATFORM_ACCOUNT_ID>:root"
+            Action: "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                "sts:ExternalId": !Ref ExternalId
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2FullAccess
+        - arn:aws:iam::aws:policy/AmazonVPCFullAccess
+      Tags:
+        - Key: Project
+          Value: EZBuilt
+        - Key: ManagedBy
+          Value: CloudFormation
+
+Outputs:
+  RoleArn:
+    Description: "ARN of the IAM role that the platform will assume."
+    Value: !GetAtt EzBuiltTerraformRole.Arn
+
+  ExternalIdReminder:
+    Description: "External ID that must be used by the platform when calling sts:AssumeRole."
+    Value: !Ref ExternalId

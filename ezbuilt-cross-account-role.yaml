@@ -1,17 +1,23 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Create cross-account IAM role for EZBuilt platform to manage EC2 and networking in this AWS account."
+Description: "Create a cross account IAM role for EZBuilt to manage infrastructure in this AWS account."
 
 Parameters:
+  PlatformAccountId:
+    Type: String
+    Description: "AWS Account ID of the EZBuilt platform (source account) that will assume this role."
+    AllowedPattern: "^[0-9]{12}$"
+    ConstraintDescription: "Must be a valid 12 digit AWS account number."
+
   ExternalId:
     Type: String
-    Description: "External ID that the platform uses when calling sts:AssumeRole. Usually prefilled by the platform."
+    Description: "External ID used by the platform when calling sts:AssumeRole."
     MinLength: 8
     MaxLength: 128
     NoEcho: true
 
   RoleName:
     Type: String
-    Description: "Name of the IAM Role to create for cross account access."
+    Description: "Name of the IAM role to create."
     Default: "EzBuiltTerraformRole"
 
 Resources:
@@ -24,15 +30,16 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              # Your platform account ID is baked in here
-              AWS: "arn:aws:iam::<YOUR_PLATFORM_ACCOUNT_ID>:root"
+              AWS: !Sub "arn:aws:iam::${PlatformAccountId}:root"
             Action: "sts:AssumeRole"
             Condition:
               StringEquals:
                 "sts:ExternalId": !Ref ExternalId
+
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonEC2FullAccess
         - arn:aws:iam::aws:policy/AmazonVPCFullAccess
+
       Tags:
         - Key: Project
           Value: EZBuilt
@@ -41,9 +48,9 @@ Resources:
 
 Outputs:
   RoleArn:
-    Description: "ARN of the IAM role that the platform will assume."
+    Description: "The IAM Role ARN that EZBuilt will assume."
     Value: !GetAtt EzBuiltTerraformRole.Arn
 
-  ExternalIdReminder:
-    Description: "External ID that must be used by the platform when calling sts:AssumeRole."
+  ExternalIdOutput:
+    Description: "External ID used to assume the role."
     Value: !Ref ExternalId

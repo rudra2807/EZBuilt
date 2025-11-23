@@ -1,0 +1,78 @@
+############################
+# Global Python ignores
+############################
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache/
+*.coverage
+*.cover
+*.log
+*.tmp
+
+############################
+# Backend (FastAPI / Python)
+############################
+backend/__pycache__/
+backend/.pytest_cache/
+backend/*.log
+backend/*.sqlite3
+
+############################
+# Frontend (React + TypeScript)
+############################
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+
+# Testing
+frontend/coverage/
+
+# Production build
+frontend/build/
+
+# Environment files
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Misc
+frontend/.DS_Store
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+############################
+# Terraform
+############################
+**/.terraform/*
+terraform-demo/.terraform.lock.hcl
+
+# State files
+*.tfstate
+*.tfstate.*
+
+# Generated files from scripts
+# terraform-demo/data_sources_list
+# terraform-demo/resources_schema_list
+
+# Terraform provider schema dumps
+# terraform-demo/schema.json
+# terraform-demo/schema2.json
+
+############################
+# Shell and PowerShell scripts (optional)
+############################
+# Uncomment these if scripts are generated automatically
+# terraform-demo/*.sh
+# terraform-demo/*.ps1
+
+############################
+# OS-specific files
+############################
+.DS_Store
+Thumbs.db

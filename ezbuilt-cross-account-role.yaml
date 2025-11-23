@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "EZBuilt Cross-Account Access Role for Infrastructure Deployment"
+
+Parameters:
+  ExternalId:
+    Type: String
+    Description: Unique identifier for secure cross-account access
+    MinLength: 8
+
+  EZBuiltAccountId:
+    Type: String
+    Description: EZBuilt AWS Account ID
+    Default: "354415165168" # Replace with your actual account ID
+
+Resources:
+  EZBuiltRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "EZBuilt-DeploymentRole-${ExternalId}"
+      Description: "Allows EZBuilt to deploy infrastructure in this account"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${EZBuiltAccountId}:root"
+            Action: "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                "sts:ExternalId": !Ref ExternalId
+      ManagedPolicyArns:
+        # Adjust these permissions based on what resources EZBuilt needs to create
+        - "arn:aws:iam::aws:policy/PowerUserAccess"
+      Tags:
+        - Key: ManagedBy
+          Value: EZBuilt
+        - Key: Purpose
+          Value: CrossAccountDeployment
+
+Outputs:
+  RoleArn:
+    Description: "ARN of the EZBuilt IAM Role - Copy this to EZBuilt platform"
+    Value: !GetAtt EZBuiltRole.Arn
+    Export:
+      Name: !Sub "EZBuilt-RoleArn-${ExternalId}"
+
+  ExternalId:
+    Description: "External ID for this connection"
+    Value: !Ref ExternalId
+
+  Instructions:
+    Description: "Next steps"
+    Value: "Copy the RoleArn value above and paste it in the EZBuilt platform"

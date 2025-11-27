@@ -1,97 +1,110 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
-import boto3
 import subprocess
 import tempfile
 import os
 import json
-from typing import Optional
 from datetime import datetime
-import uuid
 
-users_db = {}
-terraform_db = {}
-deployments_db = {}
-connections_db = {}
+# One reusable temporary directory for this process
+tmp_dir = tempfile.TemporaryDirectory()
+path = tmp_dir.name
 
-def save_role_arn(user_id: str, role_arn: str):
-    """Save role ARN to user record"""
-    if user_id not in users_db:
-        users_db[user_id] = {}
+def generate_terraform(tf_code: str):
+    """Write Terraform code to the temp dir and run init/plan."""
+
     
-    users_db[user_id]['role_arn'] = role_arn
-    users_db[user_id]['connected_at'] = datetime.utcnow().isoformat()
-    
-    # Update connection status
-    for external_id, conn in connections_db.items():
-        if conn['user_id'] == user_id:
-            connections_db[external_id]['status'] = 'connected'
-            connections_db[external_id]['role_arn'] = role_arn
 
-def assume_role(role_arn: str, external_id: str):
-    """Assume role in user's AWS account"""
-    sts = boto3.client('sts')
-    
-    try:
-        response = sts.assume_role(
-            RoleArn=role_arn,
-            RoleSessionName='EZBuilt-Session',
-            ExternalId=external_id,
-            DurationSeconds=3600
-        )
-        return response['Credentials']
-    except Exception as e:
-        raise Exception(f"Failed to assume role: {str(e)}")
+def read_statefile_from_disk():
+    """Helper that reads terraform.tfstate from the temp directory."""
+    state_file_path = os.path.join(path, "main.tf")
+    if not os.path.exists(state_file_path):
+        raise HTTPException(status_code=404, detail="State file not found")
 
-# ============================================
-# API ENDPOINTS
-# ============================================
-app = FastAPI(
-    title="EZBuilt API",
-    description="Backend API for EZBuilt - Simplified Cloud Infrastructure Deployment",
-    version="1.0.0"
+    with open(state_file_path, "r") as f:
+        # state_data = json.load(f)
+        state_data = f.read()
+
+    return state_data
+
+
+app = FastAPI(title="EZBuilt API", version="1.0.0")
+
+# CORS etc if you want
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-@app.get("/")
-async def root():
-    """Health check endpoint"""
-    return {
-        "status": "running",
-        "service": "EZBuilt API",
-        "version": "1.0.0"
-    }
+@app.get("/api/read")
+async def get_statefile():
+    """FastAPI route that returns the current terraform state."""
+    return read_statefile_from_disk()
 
-@app.post("/api/connect-account-manual")
-async def connect_account_manual(user_id: str, role_arn: str, external_id: str):
-    """
-    Manual connection method (for MVP without callback)
-    User provides role ARN directly
-    """
-    try:
-        # Test assume role
-        assume_role(role_arn, external_id)
-        
-        # Save connection
-        save_role_arn(user_id, role_arn)
-        
-        return {
-            "status": "success",
-            "message": "AWS account connected successfully",
-            "role_arn": role_arn
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Connection failed: {str(e)}")
 
 if __name__ == "__main__":
     print("🚀 Starting EZBuilt API Server...")
     print("📍 Server running at: http://localhost:8000")
     print("📖 API docs at: http://localhost:8000/docs")
-    
+
+    tf_code = """
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+data "aws_ami" "amazon_linux_2" {
+  most_recent = true
+
+  owners = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-2.0.*-x86_64-gp2"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+resource "aws_instance" "web" {
+  ami           = data.aws_ami.amazon_linux_2.id
+  instance_type = "t2.micro"
+
+  tags = {
+    Name        = "web-server"
+    ManagedBy   = "EZBuilt"
+    Environment = "production"
+  }
+}
+
+output "instance_id" {
+  value = aws_instance.web.id
+}
+"""
+
+    # Run terraform once at startup
+    execute_terraform_init(tf_code=tf_code)
+
+    # Make sure the module path here matches the filename, for example "main:app"
     uvicorn.run(
-        "test:app",
+        "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True  # Auto-reload on code changes (development only)
+        reload=True
     )

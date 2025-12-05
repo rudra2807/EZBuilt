@@ -11,6 +11,10 @@ import json
 from typing import Optional
 from datetime import datetime
 import uuid
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+import structure_requirements
 
 app = FastAPI(title="EZBuilt API", version="1.0.0")
 
@@ -23,12 +27,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+cred = credentials.Certificate(
+    os.path.join(os.path.dirname(__file__), "ezbuilt-dev-firebase-adminsdk-fbsvc-900cf233a6.json")
+)
+
+if not firebase_admin._apps:
+    firebase_admin.initialize_app(cred)
+
+# Now get Firestore client from Firebase Admin
+db = firestore.client()
+collection = db.collection("terraformPlans")
+
 # ============================================
 # MODELS
 # ============================================
 
 class CFNLinkRequest(BaseModel):
     user_id: str
+
+class UserRequirements(BaseModel):
+    user_id: str
+    requirements: str
 
 class TerraformGenerateRequest(BaseModel):
     user_id: str
@@ -41,6 +61,10 @@ class DeployRequest(BaseModel):
 class RoleArnCallback(BaseModel):
     external_id: str
     role_arn: str
+
+class ValidationResult(BaseModel):
+    valid: bool
+    errors : Optional[str]
 
 # ============================================
 # IN-MEMORY DATABASE (Replace with real DB)
@@ -213,7 +237,10 @@ def save_terraform_code(user_id: str, requirements: str, tf_code: str) -> str:
 
 def get_terraform_code(terraform_id: str):
     """Get terraform code by ID"""
-    return terraform_db.get(terraform_id)
+    doc = collection.document(terraform_id).get()
+    if not doc.exists:
+        return None
+    return doc.to_dict().get("terraformCode")
 
 def create_deployment_record(user_id: str, terraform_id: str) -> str:
     """Create deployment record"""
@@ -242,73 +269,79 @@ def get_deployment(deployment_id: str):
     """Get deployment record"""
     return deployments_db.get(deployment_id)
 
+
+BASE_DEPLOYMENT_DIR = os.path.join(os.getcwd(), "deployments")
+
 def execute_terraform_apply(
     deployment_id: str,
     role_arn: str,
     external_id: str,
     tf_code: str
 ):
-    """Execute terraform apply with assumed role"""
+    """Execute terraform apply in a persistent directory"""
     try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Write terraform code
-            tf_file = os.path.join(tmpdir, 'main.tf')
-            with open(tf_file, 'w') as f:
-                f.write(tf_code)
-            
-            # Get AWS credentials via assume role
-            creds = assume_role(role_arn, external_id)
-            
-            # Set environment variables
-            env = os.environ.copy()
-            env.update({
-                'AWS_ACCESS_KEY_ID': creds['AccessKeyId'],
-                'AWS_SECRET_ACCESS_KEY': creds['SecretAccessKey'],
-                'AWS_SESSION_TOKEN': creds['SessionToken']
-            })
-            
-            # terraform init
-            init_result = subprocess.run(
-                ['terraform', 'init'],
-                cwd=tmpdir,
-                env=env,
-                capture_output=True,
-                text=True
-            )
-            
-            if init_result.returncode != 0:
-                update_deployment_status(deployment_id, 'failed', f"Init failed: {init_result.stderr}")
-                return
-            
-            # terraform plan
-            plan_result = subprocess.run(
-                ['terraform', 'plan', '-out=tfplan'],
-                cwd=tmpdir,
-                env=env,
-                capture_output=True,
-                text=True
-            )
-            
-            if plan_result.returncode != 0:
-                update_deployment_status(deployment_id, 'failed', f"Plan failed: {plan_result.stderr}")
-                return
-            
-            update_deployment_status(deployment_id, 'planned', plan_result.stdout)
-            
-            # terraform apply
-            apply_result = subprocess.run(
-                ['terraform', 'apply', '-auto-approve', 'tfplan'],
-                cwd=tmpdir,
-                env=env,
-                capture_output=True,
-                text=True
-            )
-            
-            if apply_result.returncode == 0:
-                update_deployment_status(deployment_id, 'success', apply_result.stdout)
-            else:
-                update_deployment_status(deployment_id, 'failed', apply_result.stderr)
-    
+        # Create the physical directory
+        deployment_dir = os.path.join(BASE_DEPLOYMENT_DIR, deployment_id)
+        os.makedirs(deployment_dir, exist_ok=True)
+
+        # Write terraform code
+        tf_file = os.path.join(deployment_dir, 'main.tf')
+        with open(tf_file, 'w') as f:
+            f.write(tf_code)
+
+        # Assume role
+        creds = assume_role(role_arn, external_id)
+
+        # Set environment
+        env = os.environ.copy()
+        env.update({
+            'AWS_ACCESS_KEY_ID': creds['AccessKeyId'],
+            'AWS_SECRET_ACCESS_KEY': creds['SecretAccessKey'],
+            'AWS_SESSION_TOKEN': creds['SessionToken']
+        })
+
+        # terraform init
+        init_result = subprocess.run(
+            ['terraform', 'init'],
+            cwd=deployment_dir,
+            env=env,
+            capture_output=True,
+            text=True
+        )
+
+        if init_result.returncode != 0:
+            update_deployment_status(deployment_id, 'failed', f"Init failed: {init_result.stderr}")
+            return
+
+        # terraform plan
+        plan_result = subprocess.run(
+            ['terraform', 'plan', '-out=tfplan'],
+            cwd=deployment_dir,
+            env=env,
+            capture_output=True,
+            text=True
+        )
+
+        if plan_result.returncode != 0:
+            update_deployment_status(deployment_id, 'failed', f"Plan failed: {plan_result.stderr}")
+            return
+
+        update_deployment_status(deployment_id, 'planned', plan_result.stdout)
+
+        # terraform apply
+        apply_result = subprocess.run(
+            ['terraform', 'apply', '-auto-approve', 'tfplan'],
+            cwd=deployment_dir,
+            env=env,
+            capture_output=True,
+            text=True
+        )
+
+        if apply_result.returncode == 0:
+            update_deployment_status(deployment_id, 'success', apply_result.stdout)
+        else:
+            update_deployment_status(deployment_id, 'failed', apply_result.stderr)
+
     except Exception as e:
         update_deployment_status(deployment_id, 'failed', f"Error: {str(e)}")
 
@@ -408,6 +441,18 @@ async def connect_account_manual(user_id: str, role_arn: str, external_id: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Connection failed: {str(e)}")
 
+@app.post("/api/structure-requirements")
+async def structure_requirements_endpoint(request: UserRequirements):
+    """
+    Structure natural language requirements into JSON
+    """
+    
+    user_requierements = request.requirements
+    structured_reqs = structure_requirements.structure_requirements(user_requierements)
+    res = structure_requirements.generate_terraform_code(structured_reqs)
+    print("Generated Terraform Code:")
+    return res
+
 @app.post("/api/generate-terraform")
 async def generate_terraform_endpoint(request: TerraformGenerateRequest):
     """
@@ -454,8 +499,8 @@ async def deploy_terraform_endpoint(
         raise HTTPException(status_code=400, detail="AWS account not connected")
     
     # Get terraform code
-    tf_record = get_terraform_code(request.terraform_id)
-    if not tf_record:
+    tf_code = get_terraform_code(request.terraform_id)
+    if not tf_code:
         raise HTTPException(status_code=404, detail="Terraform code not found")
     
     # Get external ID from connections
@@ -477,7 +522,7 @@ async def deploy_terraform_endpoint(
         deployment_id,
         user['role_arn'],
         external_id,
-        tf_record['code']
+        tf_code
     )
     
     return {

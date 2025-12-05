@@ -50,11 +50,14 @@ frontend/yarn-error.log*
 # Terraform
 ############################
 **/.terraform/*
-terraform-demo/.terraform.lock.hcl
+# terraform-demo/.terraform.lock.hcl
 
 # State files
 *.tfstate
 *.tfstate.*
+
+# Test terraform folder
+terraform-demo
 
 # Generated files from scripts
 # terraform-demo/data_sources_list

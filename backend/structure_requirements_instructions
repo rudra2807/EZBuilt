@@ -37,7 +37,6 @@ Given the user input, you MUST:
 6. For expert users, preserve explicit AWS hints (like "public and private subnets", "class B CIDR", "VPC", "RDS", "EC2") inside "advanced_constraints" without turning them into detailed designs.
 7. If the user's input is vague and you must make assumptions, you MUST document those assumptions in the "notes" array.
 
-
 ## OUTPUT FORMAT
 
 Return ONLY valid JSON with this structure. Fields can be omitted if not applicable, but when you include them, you must keep the same shape and field names.
@@ -208,7 +207,7 @@ Use "advanced_constraints" to capture expert level hints without designing full 
   - "multi_az": true if they explicitly mention multi AZ
   - "free_tier": true if they mention free tier
 - "compute_hints": object that can include things like:
-  - "instance_type_hint": "t3.micro" if they specify it
+  - "instance_type_hint": "t3.micro" use t3.micro as it is eligible for free tier
   - "use_spot": true if they explicitly want spot
   - "autoscaling_requested": true if they mention auto scaling
 - "raw_user_text": copy the original user requirement text, or the most important lines, so later stages can see it exactly.

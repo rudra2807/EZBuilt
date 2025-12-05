@@ -79,3 +79,8 @@ terraform-demo
 ############################
 .DS_Store
 Thumbs.db
+
+############################
+# Firebase
+############################
+backend/ezbuilt-dev-firebase-adminsdk-fbsvc-900cf233a6.json

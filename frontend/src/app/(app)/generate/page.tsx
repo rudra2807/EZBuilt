@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveTerraformPlan, TerraformValidation } from "@/app/(app)/lib/saveTerraformPlan";
 import { useAuth } from "../context/AuthContext";
@@ -11,9 +11,6 @@ const API_BASE_URL =
 
 // TODO: replace with real user id from auth
 // const DEMO_USER_ID = "demo-user-123";
-
-const { user, loading: authLoading } = useAuth();
-const userId = user?.uid || null;
 
 type GenerationState =
     | "idle"
@@ -32,6 +29,9 @@ export default function GenerateTerraformPage() {
     const [terraformCode, setTerraformCode] = useState("");
     const [validation, setValidation] = useState<TerraformValidation | null>(null);
     const [terraformId, setTerraformId] = useState<string | null>(null);
+
+    const { user, loading: authLoading } = useAuth();
+    const userId = user?.uid || null;
 
     const examples = [
         {
@@ -116,7 +116,7 @@ export default function GenerateTerraformPage() {
             // Persist in Firestore if we got an id
             if (tfId) {
                 await saveTerraformPlan({
-                    user_id: userId,
+                    user_id: userId || "unknown-user",
                     terraformId: tfId,
                     requirements,
                     terraformCode: tfCode,

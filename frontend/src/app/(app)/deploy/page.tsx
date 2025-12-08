@@ -1,22 +1,18 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
     loadTerraformPlan,
     TerraformPlan,
     saveTerraformPlan,
 } from "@/app/(app)/lib/saveTerraformPlan";
-import { useAuth } from "../context/AuthContext";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
-const { user, loading: authLoading } = useAuth();
-const userId = user?.uid || null;
-
 // TODO - replace with real user id from auth
-// const DEMO_USER_ID = "demo-user-123";
+const DEMO_USER_ID = "demo-user-123";
 
 type DeploymentStatusResponse = {
     deployment_id: string;
@@ -110,7 +106,7 @@ export default function DeployPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: userId,
+                    user_id: DEMO_USER_ID,
                     terraform_id: terraformId,
                 }),
             });
@@ -154,7 +150,7 @@ export default function DeployPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: userId,
+                    user_id: DEMO_USER_ID,
                     terraform_id: terraformId,
                 }),
             });
@@ -316,7 +312,7 @@ export default function DeployPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: userId,
+                    user_id: DEMO_USER_ID,
                     terraform_id: terraformId,
                     code: editedCode,
                 }),
@@ -346,7 +342,7 @@ export default function DeployPage() {
             );
 
             await saveTerraformPlan({
-                userId: plan.userId,
+                user_id: plan.user_id,
                 terraformId,
                 requirements: plan.requirements,
                 terraformCode: editedCode,

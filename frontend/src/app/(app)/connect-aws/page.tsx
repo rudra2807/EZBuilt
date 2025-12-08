@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { saveAwsConnection, getAwsConnectionForUser } from "@/app/lib/saveConnection";
+import { saveAwsConnection, getAwsConnectionForUser } from "@/app/(app)/lib/saveConnection";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
+import { useAuth } from "@/app/(app)/context/AuthContext";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -196,7 +196,7 @@ export default function ConnectAwsPage() {
     return (
         <div className="min-h-screen bg-slate-950 text-slate-50">
             {/* Top bar */}
-            <header className="border-b border-slate-800">
+            {/* <header className="border-b border-slate-800">
                 <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
                     <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center shadow-lg">
@@ -220,7 +220,7 @@ export default function ConnectAwsPage() {
                         <span className="text-slate-500">AWS only for now</span>
                     </div>
                 </div>
-            </header>
+            </header> */}
 
             {/* Main content */}
             <main className="max-w-7xl mx-auto px-6 py-10 lg:py-14">

@@ -7,8 +7,8 @@ import {
     signInWithEmailAndPassword,
     signInWithPopup,
 } from "firebase/auth";
-import { getFirebaseAuth, getGoogleProvider } from "@/app/lib/firebase";
-import { useAuth } from "@/app/context/AuthContext";
+import { getFirebaseAuth, getGoogleProvider } from "@/app/(app)/lib/firebase";
+import { useAuth } from "@/app/(app)/context/AuthContext";
 
 type Mode = "signin" | "signup";
 

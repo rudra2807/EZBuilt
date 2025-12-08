@@ -2,14 +2,18 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveTerraformPlan, TerraformValidation } from "@/app/lib/saveTerraformPlan";
+import { saveTerraformPlan, TerraformValidation } from "@/app/(app)/lib/saveTerraformPlan";
+import { useAuth } from "../context/AuthContext";
 
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 // TODO: replace with real user id from auth
-const DEMO_USER_ID = "demo-user-123";
+// const DEMO_USER_ID = "demo-user-123";
+
+const { user, loading: authLoading } = useAuth();
+const userId = user?.uid || null;
 
 type GenerationState =
     | "idle"
@@ -75,7 +79,7 @@ export default function GenerateTerraformPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: DEMO_USER_ID,
+                    user_id: userId,
                     requirements: requirements,
                 }),
             });
@@ -112,7 +116,7 @@ export default function GenerateTerraformPage() {
             // Persist in Firestore if we got an id
             if (tfId) {
                 await saveTerraformPlan({
-                    userId: DEMO_USER_ID,
+                    user_id: userId,
                     terraformId: tfId,
                     requirements,
                     terraformCode: tfCode,
@@ -149,7 +153,7 @@ export default function GenerateTerraformPage() {
     return (
         <div className="min-h-screen bg-slate-950 text-slate-50">
             {/* Top bar */}
-            <header className="border-b border-slate-800">
+            {/* <header className="border-b border-slate-800">
                 <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
                     <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center shadow-lg">
@@ -173,7 +177,7 @@ export default function GenerateTerraformPage() {
                         </span>
                     </div>
                 </div>
-            </header>
+            </header> */}
 
             {/* Main content */}
             <main className="max-w-7xl mx-auto px-6 py-10 lg:py-14">

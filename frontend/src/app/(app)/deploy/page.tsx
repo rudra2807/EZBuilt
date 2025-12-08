@@ -6,13 +6,17 @@ import {
     loadTerraformPlan,
     TerraformPlan,
     saveTerraformPlan,
-} from "@/app/lib/saveTerraformPlan";
+} from "@/app/(app)/lib/saveTerraformPlan";
+import { useAuth } from "../context/AuthContext";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
+const { user, loading: authLoading } = useAuth();
+const userId = user?.uid || null;
+
 // TODO - replace with real user id from auth
-const DEMO_USER_ID = "demo-user-123";
+// const DEMO_USER_ID = "demo-user-123";
 
 type DeploymentStatusResponse = {
     deployment_id: string;
@@ -106,7 +110,7 @@ export default function DeployPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: DEMO_USER_ID,
+                    user_id: userId,
                     terraform_id: terraformId,
                 }),
             });
@@ -150,7 +154,7 @@ export default function DeployPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: DEMO_USER_ID,
+                    user_id: userId,
                     terraform_id: terraformId,
                 }),
             });
@@ -312,7 +316,7 @@ export default function DeployPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: DEMO_USER_ID,
+                    user_id: userId,
                     terraform_id: terraformId,
                     code: editedCode,
                 }),
@@ -361,7 +365,7 @@ export default function DeployPage() {
     return (
         <div className="min-h-screen bg-slate-950 text-slate-50">
             {/* Top bar */}
-            <header className="border-b border-slate-800">
+            {/* <header className="border-b border-slate-800">
                 <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
                     <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center shadow-lg">
@@ -389,7 +393,7 @@ export default function DeployPage() {
                         </span>
                     </div>
                 </div>
-            </header>
+            </header> */}
 
             {/* Main */}
             <main className="max-w-7xl mx-auto px-6 py-10 lg:py-14">

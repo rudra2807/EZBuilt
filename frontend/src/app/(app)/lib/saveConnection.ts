@@ -8,7 +8,7 @@ import {
   getDocs,
   limit,
 } from "firebase/firestore";
-import { db } from "@/app/lib/firebase";
+import { db } from "@/app/(app)/lib/firebase";
 
 export type AwsConnection = {
   id: string;

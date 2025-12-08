@@ -17,7 +17,9 @@ def _load_text_file(file_name: str) -> str:
         return f.read()
     
 def _load_json_file(file_name: str) -> dict:
-    path = os.path.join(os.path.dirname(__file__), "utilities", f"{file_name}.json")
+    base_dir = os.path.dirname(__file__)
+    utilities_dir = os.path.join(base_dir, "..", "utilities")
+    path = os.path.join(utilities_dir, f"{file_name}.json")
     with open(path, "r") as f:
         return json.load(f)
 

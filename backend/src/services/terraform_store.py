@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from src.utilities.firebase_client import get_firestore_client
 
@@ -35,3 +35,30 @@ def get_user_terraform_plans(user_id: str) -> List[dict]:
     collection = _get_collection()
     docs = collection.where("user_id", "==", user_id).stream()
     return [doc.to_dict() for doc in docs]
+
+
+def update_terraform_plan(
+    terraform_id: str,
+    *,
+    terraform_code: Optional[str] = None,
+    requirements: Optional[str] = None,
+    deployment_id: Optional[str] = None,
+    validation: Optional[dict] = None,
+) -> bool:
+    """Update an existing terraform plan. Only provided fields are updated."""
+    collection = _get_collection()
+    doc_ref = collection.document(terraform_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        return False
+    update_data = {"updatedAt": datetime.utcnow().isoformat()}
+    if terraform_code is not None:
+        update_data["terraformCode"] = terraform_code
+    if requirements is not None:
+        update_data["requirements"] = requirements
+    if deployment_id is not None:
+        update_data["deploymentId"] = deployment_id
+    if validation is not None:
+        update_data["validation"] = validation
+    doc_ref.update(update_data)
+    return True

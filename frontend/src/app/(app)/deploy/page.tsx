@@ -2,11 +2,31 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import {
-    loadTerraformPlan,
-    TerraformPlan,
-    saveTerraformPlan,
-} from "@/app/(app)/lib/saveTerraformPlan";
+import { TerraformPlan, saveTerraformPlan } from "@/app/(app)/lib/saveTerraformPlan";
+
+async function loadTerraformPlanFromApi(
+    terraformId: string,
+    userId: string | null
+): Promise<TerraformPlan | null> {
+    const url = new URL(
+        `${API_BASE_URL}/api/terraform/${encodeURIComponent(terraformId)}`
+    );
+    if (userId) url.searchParams.set("user_id", userId);
+    const res = await fetch(url.toString());
+    if (!res.ok) return null;
+    const data = await res.json();
+    return {
+        user_id: data.user_id ?? "",
+        terraformId: data.terraformId ?? terraformId,
+        deploymentId: data.deploymentId ?? "",
+        requirements: data.requirements ?? "",
+        terraformCode: data.terraformCode ?? "",
+        validation: data.validation ?? null,
+        status: data.status,
+        createdAt: data.created_at,
+        updatedAt: data.updatedAt,
+    };
+}
 import { useAuth } from "../context/AuthContext";
 
 const API_BASE_URL =
@@ -56,7 +76,7 @@ export default function DeployPage() {
     const { user, loading: authLoading } = useAuth();
     const userId = user?.uid || null;
 
-    // Load plan from Firestore
+    // Load plan from backend API (avoids client Firestore calls that can be blocked)
     useEffect(() => {
         if (!terraformId) {
             setPlanError("Missing terraformId in URL.");
@@ -68,21 +88,21 @@ export default function DeployPage() {
 
         (async () => {
             try {
-                const loaded = await loadTerraformPlan(terraformId);
-                setDeploymentId(loaded?.deploymentId || null);
+                const loaded = await loadTerraformPlanFromApi(terraformId, userId);
                 if (cancelled) return;
                 if (!loaded) {
                     setPlanError(
                         "Could not find Terraform plan. Try generating it again."
                     );
                 } else {
+                    setDeploymentId(loaded.deploymentId || null);
                     setPlan(loaded);
                     setEditedCode(loaded.terraformCode || "");
                 }
             } catch (err: any) {
                 if (!cancelled) {
                     setPlanError(
-                        err.message || "Failed to load Terraform plan from Firestore."
+                        err.message || "Failed to load Terraform plan."
                     );
                 }
             } finally {
@@ -93,7 +113,7 @@ export default function DeployPage() {
         return () => {
             cancelled = true;
         };
-    }, [terraformId]);
+    }, [terraformId, userId]);
 
     // Start apply
     const handleStartDeployment = async () => {
@@ -351,15 +371,19 @@ export default function DeployPage() {
                     : prev
             );
 
-            // persist to Firestore
-            await saveTerraformPlan({
-                user_id: userId,                        // correct key
-                terraformId,
-                deploymentId: plan.deploymentId,
-                requirements: plan.requirements,
-                terraformCode: editedCode,
-                validation: newValidation,
-            });
+            // Optionally mirror to Firestore (best-effort; backend is source of truth)
+            try {
+                await saveTerraformPlan({
+                    user_id: userId,
+                    terraformId,
+                    deploymentId: plan.deploymentId,
+                    requirements: plan.requirements,
+                    terraformCode: editedCode,
+                    validation: newValidation,
+                });
+            } catch {
+                // Ignore (e.g. blocked by browser); backend already saved
+            }
 
             setIsEditingCode(false);
             setEditSuccess("Terraform code updated and revalidated.");

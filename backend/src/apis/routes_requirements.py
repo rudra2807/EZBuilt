@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from src.services.deployments import create_deployment_record
 from src.services.terraform_exec import validate_terraform
 from src.services.structure_requirements import generate_terraform_code, structure_requirements
-from src.services.terraform_store import get_terraform_plan, save_terraform_code
+from src.services.terraform_store import get_terraform_plan, save_terraform_code, update_terraform_plan
 from src.utilities.schemas import UpdateTerraformRequest, UserRequirements, ValidationResult
 
 router = APIRouter(prefix="/api", tags=["requirements"])
@@ -39,6 +39,7 @@ async def structure_requirements_endpoint(request: UserRequirements):
             user_id=request.user_id,
             terraform_id=tf_id
         )
+        update_terraform_plan(tf_id, deployment_id=deployment_id)
         print(f"[API] Step 4 complete. Deployment ID: {deployment_id}")
 
         print("[API] Step 5: Validating Terraform...")
@@ -75,15 +76,18 @@ async def update_terraform_endpoint(request: UpdateTerraformRequest):
         # Ownership check
         if tf_record["user_id"] != request.user_id:
             raise HTTPException(status_code=403, detail="Not authorized to update this terraform config")
-        
-        # Revalidate edited code
-        # validation_result = validate_terraform(request.code)
-        validation_result = ValidationResult(valid=True, errors=None)
 
-        # Update in Firestore
-        tf_record["terraformCode"] = request.code
-        tf_record["updatedAt"] = datetime.utcnow().isoformat()
-        tf_record["validation"] = validation_result
+        # Revalidate edited code (optional: pass deployment_id if you want to run validate in deployment dir)
+        validation_result = validate_terraform(
+            request.code, tf_record.get("deploymentId") or request.terraform_id
+        )
+        updated = update_terraform_plan(
+            request.terraform_id,
+            terraform_code=request.code,
+            validation=validation_result.model_dump(),
+        )
+        if not updated:
+            raise HTTPException(status_code=500, detail="Failed to persist terraform update")
 
         print(f"[API] Successfully updated terraform_id: {request.terraform_id}")
         return {

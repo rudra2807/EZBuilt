@@ -170,7 +170,13 @@ def instruction_set(structured_requirements, data_source, resources_source) -> s
     - If "autoscaling_requested": true:
     - Use an autoscaling group and launch template instead of a single instance.
 
-    For every instance resource create .pem file for SSH access to instances, and document the location of the private key in outputs.tf.
+    For SSH access to EC2 instances:
+    - Use the tls_private_key resource to generate an SSH key pair
+    - Use aws_key_pair resource to register the public key with AWS
+    - Use local_file resource to save the private key to a .pem file in the deployment directory
+    - Set proper file permissions (0600) on the private key file
+    - Output the path to the private key file in outputs.tf
+    - Add a comment warning users to keep the private key secure
 
     If requirements are vague, prefer fewer resources and simpler architectures, and explain assumptions in comments.
 

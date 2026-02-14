@@ -131,11 +131,13 @@ export default function ConnectAwsPage() {
 
             const data = await res.json();
 
+            console.log("before saveAwsConnection");
             await saveAwsConnection({
                 userId,
                 externalId,
                 roleArn: data.role_arn ?? roleArn,
             });
+            console.log("after saveAwsConnection");
 
             setSuccessMsg(data.message || "AWS account connected successfully.");
             setPhase("connected");

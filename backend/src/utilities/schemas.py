@@ -19,10 +19,16 @@ class TerraformGenerateRequest(BaseModel):
 class DeployRequest(BaseModel):
     user_id: str
     terraform_id: str
+    deployment_id: str
 
 class RoleArnCallback(BaseModel):
     external_id: str
     role_arn: str
+
+class UpdateTerraformRequest(BaseModel):
+    user_id: str
+    terraform_id: str
+    code: str
 
 class ValidationResult(BaseModel):
     valid: bool
@@ -31,3 +37,4 @@ class ValidationResult(BaseModel):
 class DestroyRequest(BaseModel):
     user_id: str
     terraform_id: str
+    deployment_id: str

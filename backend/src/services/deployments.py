@@ -1,12 +1,15 @@
 from datetime import datetime
 import uuid
+from firebase_admin import firestore
+from src.utilities.firebase_client import get_firestore_client
 
-from src.db.memory import deployments_db
+db = get_firestore_client()
 
 def create_deployment_record(user_id: str, terraform_id: str) -> str:
     """Create deployment record"""
     deployment_id = str(uuid.uuid4())
-    deployments_db[deployment_id] = {
+    doc_ref = db.collection("deployments").document(deployment_id)
+    result = {
         'id': deployment_id,
         'user_id': user_id,
         'terraform_id': terraform_id,
@@ -16,19 +19,41 @@ def create_deployment_record(user_id: str, terraform_id: str) -> str:
         'started_at': datetime.utcnow().isoformat(),
         'completed_at': None
     }
+    doc_ref.set(result)
     return deployment_id
 
 def update_deployment_status(deployment_id: str, status: str, output: str):
     """Update deployment status"""
-    if deployment_id in deployments_db:
-        deployments_db[deployment_id]['status'] = status
-        deployments_db[deployment_id]['output'] = output
-        if status in ['success', 'failed']:
-            deployments_db[deployment_id]['completed_at'] = datetime.utcnow().isoformat()
+    doc_ref = db.collection("deployments").document(deployment_id)
+    snapshot = doc_ref.get()
+
+    if not snapshot.exists:
+        # Deployment record does not exist
+        return
+
+    update_data = {
+        "status": status,
+        "output": output
+    }
+
+    if status in ["success", "failed"]:
+        update_data["completed_at"] = datetime.utcnow().isoformat()
+
+    doc_ref.update(update_data)
 
 def get_deployment(deployment_id: str):
     """Get deployment record"""
-    return deployments_db.get(deployment_id)
+    doc = db.collection("deployments").document(deployment_id).get()
+    if not doc.exists:
+        return None
+    return doc.to_dict()
 
 def get_user_deployments(user_id: str) -> list[dict]:
-    return [d for d in deployments_db.values() if d["user_id"] == user_id]
+    docs = (
+        db.collection("deployments")
+        .where("user_id", "==", user_id)
+        .order_by("started_at")
+        .stream()
+    )
+
+    return [d.to_dict() for d in docs]

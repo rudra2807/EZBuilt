@@ -7,12 +7,13 @@ import {
     TerraformPlan,
     saveTerraformPlan,
 } from "@/app/(app)/lib/saveTerraformPlan";
+import { useAuth } from "../context/AuthContext";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 // TODO - replace with real user id from auth
-const DEMO_USER_ID = "demo-user-123";
+// const DEMO_USER_ID = "demo-user-123";
 
 type DeploymentStatusResponse = {
     deployment_id: string;
@@ -52,6 +53,9 @@ export default function DeployPage() {
 
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+    const { user, loading: authLoading } = useAuth();
+    const userId = user?.uid || null;
+
     // Load plan from Firestore
     useEffect(() => {
         if (!terraformId) {
@@ -65,6 +69,7 @@ export default function DeployPage() {
         (async () => {
             try {
                 const loaded = await loadTerraformPlan(terraformId);
+                setDeploymentId(loaded?.deploymentId || null);
                 if (cancelled) return;
                 if (!loaded) {
                     setPlanError(
@@ -100,14 +105,17 @@ export default function DeployPage() {
         setDeploymentStatus(null);
 
         try {
+            // console.log(plan?.deploymentId)
+            console.log(userId)
             const res = await fetch(`${API_BASE_URL}/api/deploy`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: DEMO_USER_ID,
+                    user_id: userId,
                     terraform_id: terraformId,
+                    deployment_id: plan?.deploymentId,
                 }),
             });
 
@@ -150,8 +158,9 @@ export default function DeployPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: DEMO_USER_ID,
+                    user_id: userId,
                     terraform_id: terraformId,
+                    deployment_id: plan?.deploymentId,
                 }),
             });
 
@@ -180,6 +189,7 @@ export default function DeployPage() {
 
     // Poll status for both apply and destroy
     useEffect(() => {
+        console.log("setPlan deploymentId:", plan?.deploymentId);
         if (!deploymentId) return;
 
         const poll = async () => {
@@ -237,7 +247,7 @@ export default function DeployPage() {
     }, [deploymentId]);
 
     const statusBadge = (() => {
-        if (!deploymentId) {
+        if (deploymentId) {
             return {
                 text:
                     operation === "destroy"
@@ -283,11 +293,11 @@ export default function DeployPage() {
         !!plan &&
         !!terraformId &&
         !startingDeployment &&
-        !deploymentId &&
+        deploymentId &&
         (!plan.validation || plan.validation.valid);
 
     const canDestroy =
-        !!plan && !!terraformId && !startingDestroy && !deploymentId;
+        !!plan && !!terraformId && !startingDestroy && deploymentId;
 
     const handleCopyCode = async () => {
         const codeToCopy = isEditingCode ? editedCode : plan?.terraformCode;
@@ -300,7 +310,7 @@ export default function DeployPage() {
     };
 
     const handleSaveEditedCode = async () => {
-        if (!plan || !terraformId) return;
+        if (!plan || !terraformId || !userId) return;
         setSavingEdit(true);
         setEditError(null);
         setEditSuccess(null);
@@ -312,7 +322,7 @@ export default function DeployPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: DEMO_USER_ID,
+                    user_id: userId,              // from auth
                     terraform_id: terraformId,
                     code: editedCode,
                 }),
@@ -341,9 +351,11 @@ export default function DeployPage() {
                     : prev
             );
 
+            // persist to Firestore
             await saveTerraformPlan({
-                user_id: plan.user_id,
+                user_id: userId,                        // correct key
                 terraformId,
+                deploymentId: plan.deploymentId,
                 requirements: plan.requirements,
                 terraformCode: editedCode,
                 validation: newValidation,
@@ -667,13 +679,13 @@ export default function DeployPage() {
                                             </pre>
                                         ) : (
                                             <div className="h-full flex flex-col items-center justify-center gap-2 px-6 text-[11px] text-slate-500 text-center">
-                                                {!deploymentId && operation === "apply" && (
+                                                {deploymentId && operation === "apply" && (
                                                     <p>
                                                         Click "Deploy to AWS" on the left to start Terraform
                                                         apply and stream the logs here.
                                                     </p>
                                                 )}
-                                                {!deploymentId && operation === "destroy" && (
+                                                {deploymentId && operation === "destroy" && (
                                                     <p>
                                                         Click "Destroy resources" on the left to run
                                                         Terraform destroy and stream the logs here.

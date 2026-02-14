@@ -118,16 +118,20 @@ export default function GenerateTerraformPage() {
             setTerraformId(tfId || null);
             setGenerationState("generated");
 
-            // Persist in Firestore if we got an id
+            // Optionally mirror to Firestore (best-effort; backend is source of truth)
             if (tfId) {
-                await saveTerraformPlan({
-                    user_id: userId || "unknown-user",
-                    terraformId: tfId,
-                    deploymentId: data.deployment_id,
-                    requirements,
-                    terraformCode: tfCode,
-                    validation: tfValidation,
-                });
+                try {
+                    await saveTerraformPlan({
+                        user_id: userId || "unknown-user",
+                        terraformId: tfId,
+                        deploymentId: data.deployment_id,
+                        requirements,
+                        terraformCode: tfCode,
+                        validation: tfValidation,
+                    });
+                } catch {
+                    // Ignore (e.g. blocked by browser); backend already has the plan
+                }
             }
         } catch (err: any) {
             setGenerationState("error");

@@ -36,7 +36,7 @@ def update_deployment_status(deployment_id: str, status: str, output: str):
         "output": output
     }
 
-    if status in ["success", "failed"]:
+    if status in ("success", "failed", "destroyed", "destroy_failed"):
         update_data["completed_at"] = datetime.utcnow().isoformat()
 
     doc_ref.update(update_data)

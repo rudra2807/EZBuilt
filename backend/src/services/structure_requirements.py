@@ -15,7 +15,9 @@ def _get_gemini_client() -> genai.Client:
     return genai.Client(api_key=api_key)
 
 def _load_text_file(file_name: str) -> str:
-    path = os.path.join("model_instructions", file_name)
+    """Load a text file from model_instructions (path relative to backend root)."""
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    path = os.path.join(base_dir, "model_instructions", file_name)
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
     

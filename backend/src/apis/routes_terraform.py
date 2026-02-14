@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from src.services.aws_conn import get_user
 from src.services.deployments import create_deployment_record, get_deployment, get_user_deployments
@@ -44,7 +45,7 @@ async def deploy_terraform_endpoint(
     )
     
     return {
-        "deployment_id": tf_record["deploymentId"],
+        "deployment_id": request.deployment_id,
         "status": "started",
         "message": "Deployment started in background"
     }
@@ -64,6 +65,29 @@ async def get_deployment_status_endpoint(deployment_id: str):
         "output": deployment['output'],
         "started_at": deployment['started_at'],
         "completed_at": deployment['completed_at']
+    }
+
+@router.get("/terraform/{terraform_id}")
+async def get_terraform_plan_endpoint(terraform_id: str, user_id: Optional[str] = None):
+    """
+    Get a single terraform plan by id. Optional user_id for ownership check.
+    """
+    tf_record = get_terraform_plan(terraform_id)
+    if not tf_record:
+        raise HTTPException(status_code=404, detail="Terraform plan not found")
+    if user_id is not None and tf_record.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this plan")
+    # Normalize keys for frontend (camelCase where expected)
+    return {
+        "user_id": tf_record.get("user_id"),
+        "terraformId": tf_record.get("id") or terraform_id,
+        "deploymentId": tf_record.get("deploymentId"),
+        "requirements": tf_record.get("requirements"),
+        "terraformCode": tf_record.get("terraformCode"),
+        "validation": tf_record.get("validation"),
+        "status": tf_record.get("status"),
+        "created_at": tf_record.get("created_at"),
+        "updatedAt": tf_record.get("updatedAt"),
     }
 
 @router.get("/user/{user_id}/terraform")
@@ -105,9 +129,11 @@ async def destroy_terraform_endpoint(
     if not external_id:
         raise HTTPException(status_code=400, detail="External ID not found")
     
-    # Create deployment record for destroy operation
+    # Create deployment record for destroy operation (use its id for status polling)
     doc_ref = db.collection("deployments").document()
+    destroy_deployment_id = doc_ref.id
     doc_ref.set({
+        "id": destroy_deployment_id,
         "operation": "destroy",
         "status": "destroying",
         "user_id": request.user_id,
@@ -116,18 +142,18 @@ async def destroy_terraform_endpoint(
         "completed_at": None,
         "output": ""
     })
-    
-    # Run destroy in background
+
+    # Run destroy in background using the new deployment record id
     background_tasks.add_task(
         execute_terraform_destroy,
-        request.deployment_id,
+        destroy_deployment_id,
         user['roleArn'],
         external_id,
         tf_record['terraformCode']
     )
-    
+
     return {
-        "deployment_id": request.deployment_id,
+        "deployment_id": destroy_deployment_id,
         "status": "destroying",
         "message": "Destroy operation started in background"
     }
@@ -143,28 +169,31 @@ async def get_terraform_resources(terraform_id: str):
         raise HTTPException(status_code=404, detail="Terraform code not found")
     
     # Find all deployments for this terraform
-    doc_ref = db.collection("deployments").where("terraform_id", "==", terraform_id)
-    docs = doc_ref.stream()
-    
-    # Get the latest successful deployment
-    successful_deployments = [
-        dep for dep in docs
-        if dep['status'] == 'success'
-    ]
-    
+    query = db.collection("deployments").where("terraform_id", "==", terraform_id)
+    snapshots = list(query.stream())
+
+    # Convert Firestore snapshots to dicts with id
+    deployments = []
+    for snap in snapshots:
+        d = snap.to_dict()
+        d["id"] = d.get("id") or snap.id
+        deployments.append(d)
+
+    successful_deployments = [d for d in deployments if d.get("status") == "success"]
+
     if not successful_deployments:
         return {
             "terraform_id": terraform_id,
             "status": "not_deployed",
             "resources": []
         }
-    
-    latest_deployment = max(successful_deployments, key=lambda x: x['started_at'])
-    
+
+    latest_deployment = max(successful_deployments, key=lambda x: x.get("started_at") or "")
+
     return {
         "terraform_id": terraform_id,
         "status": "deployed",
-        "deployment_id": latest_deployment['id'],
-        "deployed_at": latest_deployment['completed_at'],
+        "deployment_id": latest_deployment["id"],
+        "deployed_at": latest_deployment.get("completed_at"),
         "can_destroy": True
     }

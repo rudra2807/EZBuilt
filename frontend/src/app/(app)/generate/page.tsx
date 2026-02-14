@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveTerraformPlan, TerraformValidation } from "@/app/(app)/lib/saveTerraformPlan";
 import { useAuth } from "../context/AuthContext";
@@ -50,6 +50,11 @@ export default function GenerateTerraformPage() {
                 "Create a new VPC with private subnets and security groups for an AWS RDS Postgres instance. Use a db.t3.micro instance with 20 GB storage, automatic backups for 7 days, and disallow public access. Output the endpoint as a Terraform output.",
         },
     ];
+
+    useEffect(() => {
+        console.log("Auth loading:", authLoading, "User ID:", userId);
+        console.log(terraformId)
+    }, [authLoading, userId]);
 
     const handleUseExample = (text: string) => {
         setRequirements(text);
@@ -118,6 +123,7 @@ export default function GenerateTerraformPage() {
                 await saveTerraformPlan({
                     user_id: userId || "unknown-user",
                     terraformId: tfId,
+                    deploymentId: data.deployment_id,
                     requirements,
                     terraformCode: tfCode,
                     validation: tfValidation,

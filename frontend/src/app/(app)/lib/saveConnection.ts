@@ -7,6 +7,8 @@ import {
   where,
   getDocs,
   limit,
+  runTransaction,
+  doc,
 } from "firebase/firestore";
 import { db } from "@/app/(app)/lib/firebase";
 
@@ -23,12 +25,28 @@ export async function saveAwsConnection(params: {
   roleArn: string;
 }) {
   const { userId, externalId, roleArn } = params;
+  const ref = doc(db, "awsConnections", params.userId);
 
-  await addDoc(collection(db, "awsConnections"), {
-    userId,
-    externalId,
-    roleArn,
-    updatedAt: serverTimestamp(),
+  // await addDoc(collection(db, "awsConnections", userId), {
+  //   userId,
+  //   externalId,
+  //   roleArn,
+  //   updatedAt: serverTimestamp(),
+  // });
+
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+
+    if (snap.exists()) {
+      throw new Error("AWS connection already exists for this user");
+    }
+
+    tx.set(ref, {
+      userId,
+      externalId,
+      roleArn,
+      createdAt: serverTimestamp(),
+    });
   });
 }
 

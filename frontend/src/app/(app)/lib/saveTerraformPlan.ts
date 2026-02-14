@@ -10,6 +10,7 @@ export type TerraformValidation = {
 export type TerraformPlan = {
   user_id: string;
   terraformId: string;
+  deploymentId: string;
   requirements: string;
   terraformCode: string;
   validation: TerraformValidation | null;
@@ -22,12 +23,19 @@ export type TerraformPlan = {
 export async function saveTerraformPlan(params: {
   user_id: string | null;
   terraformId: string;
+  deploymentId: string;
   requirements: string;
   terraformCode: string;
   validation: TerraformValidation | null;
 }) {
-  const { user_id, terraformId, requirements, terraformCode, validation } =
-    params;
+  const {
+    user_id,
+    terraformId,
+    deploymentId,
+    requirements,
+    terraformCode,
+    validation,
+  } = params;
 
   const ref = doc(db, "terraformPlans", terraformId);
 
@@ -36,6 +44,7 @@ export async function saveTerraformPlan(params: {
     {
       user_id,
       terraformId,
+      deploymentId,
       requirements,
       terraformCode,
       validation: validation || null,
@@ -58,8 +67,9 @@ export async function loadTerraformPlan(
   const data = snap.data();
 
   return {
-    user_id: data.userId,
+    user_id: data.user_id ?? data.userId ?? "",
     terraformId: data.terraformId,
+    deploymentId: data.deploymentId,
     requirements: data.requirements,
     terraformCode: data.terraformCode,
     validation: (data.validation || null) as TerraformValidation | null,

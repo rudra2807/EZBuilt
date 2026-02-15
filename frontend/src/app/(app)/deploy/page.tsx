@@ -16,11 +16,11 @@ async function loadTerraformPlanFromApi(
     if (!res.ok) return null;
     const data = await res.json();
     return {
-        user_id: data.user_id ?? "",
-        terraformId: data.terraformId ?? terraformId,
-        deploymentId: data.deploymentId ?? "",
-        requirements: data.requirements ?? "",
-        terraformCode: data.terraformCode ?? "",
+        user_id: data.user_id,
+        terraformId: data.id,
+        deploymentId: data.deploymentId,
+        requirements: data.requirements,
+        terraformCode: data.terraformCode,
         validation: data.validation ?? null,
         status: data.status,
         createdAt: data.created_at,
@@ -31,9 +31,6 @@ import { useAuth } from "../context/AuthContext";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-
-// TODO - replace with real user id from auth
-// const DEMO_USER_ID = "demo-user-123";
 
 type DeploymentStatusResponse = {
     deployment_id: string;
@@ -96,6 +93,7 @@ export default function DeployPage() {
                     );
                 } else {
                     setDeploymentId(loaded.deploymentId || null);
+                    console.log("Deployment ID: " + deploymentId)
                     setPlan(loaded);
                     setEditedCode(loaded.terraformCode || "");
                 }
@@ -125,7 +123,7 @@ export default function DeployPage() {
         setDeploymentStatus(null);
 
         try {
-            // console.log(plan?.deploymentId)
+            console.log("Deployment ID: " + deploymentId)
             console.log(userId)
             const res = await fetch(`${API_BASE_URL}/api/deploy`, {
                 method: "POST",
@@ -150,6 +148,7 @@ export default function DeployPage() {
 
             const data = await res.json();
             const depId = data.deployment_id as string;
+            console.log(data.message);
 
             setDeploymentId(depId);
             setDeploymentStatus(data.status || "started");
@@ -180,7 +179,7 @@ export default function DeployPage() {
                 body: JSON.stringify({
                     user_id: userId,
                     terraform_id: terraformId,
-                    deployment_id: plan?.deploymentId,
+                    deployment_id: deploymentId,
                 }),
             });
 

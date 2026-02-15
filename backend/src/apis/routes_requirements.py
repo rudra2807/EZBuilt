@@ -21,6 +21,7 @@ async def structure_requirements_endpoint(request: UserRequirements):
         print("[API] Step 1: Structuring requirements...")
         structured_json = structure_requirements(request.requirements)
         print(f"[API] Step 1 complete. Structured JSON length: {len(structured_json)}")
+        print(f"[API] Structured JSON: {structured_json}")
         
         print("[API] Step 2: Generating Terraform code...")
         tf_code = generate_terraform_code(structured_json)

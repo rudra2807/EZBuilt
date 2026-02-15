@@ -4,7 +4,7 @@ from firebase_admin import credentials, firestore
 
 _CRED_PATH = os.path.join(
     os.path.dirname(__file__),
-    "ezbuilt-dev-firebase-adminsdk-fbsvc-900cf233a6.json",
+    "ezbuilt-dev-firebase.json",
 )
 
 def init_firebase_if_needed():

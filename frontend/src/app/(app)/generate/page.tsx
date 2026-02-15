@@ -118,21 +118,6 @@ export default function GenerateTerraformPage() {
             setTerraformId(tfId || null);
             setGenerationState("generated");
 
-            // Optionally mirror to Firestore (best-effort; backend is source of truth)
-            if (tfId) {
-                try {
-                    await saveTerraformPlan({
-                        user_id: userId || "unknown-user",
-                        terraformId: tfId,
-                        deploymentId: data.deployment_id,
-                        requirements,
-                        terraformCode: tfCode,
-                        validation: tfValidation,
-                    });
-                } catch {
-                    // Ignore (e.g. blocked by browser); backend already has the plan
-                }
-            }
         } catch (err: any) {
             setGenerationState("error");
             setErrorMsg(err.message || "Unexpected error while generating Terraform.");

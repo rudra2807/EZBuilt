@@ -144,7 +144,7 @@ def execute_terraform_destroy(
     try:
         deployment_dir = os.path.join(BASE_DEPLOYMENT_DIR, deployment_id)
         # tf_file = os.path.join(deployment_dir, 'main.tf')
-        
+        print("destroying deployment_dir: " + deployment_dir)
         creds = assume_role(role_arn, external_id)
         
         # Set environment variables

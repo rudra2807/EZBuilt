@@ -26,6 +26,7 @@ async def structure_requirements_endpoint(request: UserRequirements):
         print("[API] Step 2: Generating Terraform code...")
         tf_code = generate_terraform_code(structured_json)
         print(f"[API] Step 2 complete. Terraform code length: {len(tf_code)}")
+        print(tf_code)
 
         print("[API] Step 3: Saving Terraform code to Firestore...")
         tf_id = save_terraform_code(

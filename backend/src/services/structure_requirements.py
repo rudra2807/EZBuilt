@@ -26,6 +26,9 @@ def _invoke_bedrock_stream(system_text: str, user_text: str) -> str:
     client = _get_bedrock_client()
     response = client.converse_stream(
         modelId=BEDROCK_MODEL_ID,
+        inferenceConfig={
+            "temperature":0.1
+        },
         messages=[
             {
                 "role": "user",
@@ -74,6 +77,12 @@ def structure_requirements(requirements: str) -> str:
 
         print("[structure_requirements] Calling Bedrock API...")
         reqs = _invoke_bedrock_stream(model_instructions, requirements)
+        
+        # structured_json = json.loads(reqs)
+        
+        assert 'project_metadata' in reqs
+        assert 'components' in reqs
+        
         print(f"[structure_requirements] Completed! Response length: {len(reqs)}")
         return reqs
 
@@ -89,25 +98,39 @@ def generate_terraform_code(structured_requirements: str) -> str:
     print(f"[generate_terraform_code] Starting generation (input length: {len(structured_requirements)} chars)")
 
     try:
-        data_schema = _load_json_file("data_sources_list")
-        available_data_sources = data_schema["available_data_sources"]
-        print(f"[generate_terraform_code] Loaded {len(available_data_sources)} data sources")
+        # data_schema = _load_json_file("data_sources_list")
+        # available_data_sources = data_schema["available_data_sources"]
+        # print(f"[generate_terraform_code] Loaded {len(available_data_sources)} data sources")
 
-        resources_schema = _load_json_file("resources_schema")
-        available_resources = resources_schema["available_resources"]
-        print(f"[generate_terraform_code] Loaded {len(available_resources)} resources")
+        # resources_schema = _load_json_file("resources_schema")
+        # available_resources = resources_schema["available_resources"]
+        # print(f"[generate_terraform_code] Loaded {len(available_resources)} resources")
 
         instructions = instruction_set(
-            structured_requirements,
-            available_data_sources,
-            available_resources,
+            json.dumps(structured_requirements, indent=2)
         )
         print(f"[generate_terraform_code] Generated instructions (length: {len(instructions)} chars)")
 
         print("[generate_terraform_code] Calling Bedrock API...")
-        tf_code = _invoke_bedrock_stream(instructions, structured_requirements)
-        print(f"[generate_terraform_code] Completed! Response length: {len(tf_code)}")
-        return tf_code
+        tf_code_str = _invoke_bedrock_stream(instructions, structured_requirements)
+
+        cleaned = tf_code_str.strip()
+
+        # Remove markdown fences if present
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("```")[1]  # remove first fence
+            cleaned = cleaned.replace("json", "", 1).strip()
+
+        terraform_output = json.loads(cleaned)
+        # terraform_output = json.loads(tf_code_str)
+
+        assert 'files' in terraform_output
+        assert 'main.tf' in terraform_output['files']
+        assert 'variables.tf' in terraform_output['files']
+        assert 'outputs.tf' in terraform_output['files']
+        
+        print(f"[generate_terraform_code] Completed! Response length: {len(terraform_output)}")
+        return terraform_output
 
     except ClientError as e:
         print(f"[generate_terraform_code] ERROR: {str(e)}")

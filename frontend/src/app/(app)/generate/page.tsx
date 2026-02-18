@@ -9,9 +9,6 @@ import { useAuth } from "../context/AuthContext";
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
-// TODO: replace with real user id from auth
-// const DEMO_USER_ID = "demo-user-123";
-
 type GenerationState =
     | "idle"
     | "generating"
@@ -31,7 +28,7 @@ export default function GenerateTerraformPage() {
     const [terraformId, setTerraformId] = useState<string | null>(null);
 
     const { user, loading: authLoading } = useAuth();
-    const userId = user?.uid || null;
+    const userId = user?.sub || null;
 
     const examples = [
         {

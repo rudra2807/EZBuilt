@@ -29,7 +29,7 @@ export default function ConnectAwsPage() {
 
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    const userId = user?.uid || null;
+    const userId = user?.sub || null;
 
     // 1 - Auth gate and existing connection check
     useEffect(() => {
@@ -44,7 +44,7 @@ export default function ConnectAwsPage() {
 
         (async () => {
             try {
-                const existing = await getAwsConnectionForUser(user.uid);
+                const existing = await getAwsConnectionForUser(user.sub);
                 if (cancelled) return;
 
                 if (existing) {
@@ -197,33 +197,6 @@ export default function ConnectAwsPage() {
     // From here down, same UI as you already had
     return (
         <div className="min-h-screen bg-slate-950 text-slate-50">
-            {/* Top bar */}
-            {/* <header className="border-b border-slate-800">
-                <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-                    <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center shadow-lg">
-                            <span className="text-xl">🚀</span>
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-semibold tracking-tight">
-                                EZBuilt Platform
-                            </h1>
-                            <p className="text-xs text-slate-400">
-                                Infrastructure as a conversation, deployed on your cloud
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="hidden md:flex items-center gap-2 text-xs text-slate-400">
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                            <span>Secure cross account access</span>
-                        </span>
-                        <span className="text-slate-500">AWS only for now</span>
-                    </div>
-                </div>
-            </header> */}
-
             {/* Main content */}
             <main className="max-w-7xl mx-auto px-6 py-10 lg:py-14">
                 <div className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-10 items-start">

@@ -1,42 +1,59 @@
 // src/context/AuthContext.tsx
 "use client";
 
-import {
-    onAuthStateChanged,
-    signOut,
-    type User,
-} from "firebase/auth";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { getFirebaseAuth } from "@/app/(app)/lib/firebase";
+
+type CognitoUser = {
+    email: string;
+    sub: string;
+    name?: string;
+};
 
 type AuthContextValue = {
-    user: User | null;
+    user: CognitoUser | null;
     loading: boolean;
     logout: () => Promise<void>;
+    refresh: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<CognitoUser | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const auth = getFirebaseAuth();
-        const unsub = onAuthStateChanged(auth, (firebaseUser) => {
-            setUser(firebaseUser);
+    const fetchUser = async () => {
+        try {
+            const res = await fetch("/api/auth/me");
+            if (res.ok) {
+                const data = await res.json();
+                setUser(data.user);
+            } else {
+                setUser(null);
+            }
+        } catch (error) {
+            console.error("Failed to fetch user:", error);
+            setUser(null);
+        } finally {
             setLoading(false);
-        });
-        return () => unsub();
+        }
+    };
+
+    useEffect(() => {
+        fetchUser();
     }, []);
 
     const logout = async () => {
-        const auth = getFirebaseAuth();
-        await signOut(auth);
+        window.location.href = "/api/auth/logout";
+    };
+
+    const refresh = async () => {
+        setLoading(true);
+        await fetchUser();
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, logout }}>
+        <AuthContext.Provider value={{ user, loading, logout, refresh }}>
             {children}
         </AuthContext.Provider>
     );

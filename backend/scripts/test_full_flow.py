@@ -42,13 +42,20 @@ async def test_flow():
             if resp.status_code != 200:
                 print(f"   ❌ Failed to create user: {resp.status_code}")
                 print(f"      Response: {resp.text}")
-                sys.exit(1)
-            
-            user = resp.json()
-            print(f"   ✅ User created:")
-            print(f"      - ID: {user['user_id']}")
-            print(f"      - Email: {user['email']}")
-            print(f"      - Created: {user['created_at']}")
+                # Try to get existing user instead
+                print("   ℹ️  Trying to get existing user...")
+                resp = await client.get(f"{base_url}/api/auth/user/{test_user['sub']}")
+                if resp.status_code == 200:
+                    user = resp.json()
+                    print(f"   ✅ Using existing user: {user['email']}")
+                else:
+                    sys.exit(1)
+            else:
+                user = resp.json()
+                print(f"   ✅ User created:")
+                print(f"      - ID: {user['user_id']}")
+                print(f"      - Email: {user['email']}")
+                print(f"      - Created: {user['created_at']}")
             
             # Test 3: Get User
             print("\n3️⃣  Retrieving user...")

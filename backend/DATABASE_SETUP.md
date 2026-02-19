@@ -5,10 +5,23 @@
 Add to `backend/.env.local`:
 
 ```env
+# Database Configuration
 DATABASE_URL=postgresql+asyncpg://postgres:ezbuilt-master@your-aurora-endpoint.region.rds.amazonaws.com:5432/ezbuilt
+
+# AWS Configuration
+AWS_REGION=us-east-1
+
+# S3 Terraform Storage (Required for S3-based Terraform file storage)
+EZBUILT_TERRAFORM_SOURCE_BUCKET=ezbuilt-terraform-source
 ```
 
 Replace `your-aurora-endpoint.region.rds.amazonaws.com` with your actual Aurora endpoint.
+
+### Environment Variable Details
+
+- `DATABASE_URL`: PostgreSQL connection string for RDS Aurora
+- `AWS_REGION`: AWS region for S3 and other AWS services (default: us-east-1)
+- `EZBUILT_TERRAFORM_SOURCE_BUCKET`: S3 bucket name for storing Terraform source files
 
 ## 2. Install Dependencies
 

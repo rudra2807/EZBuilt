@@ -1,6 +1,9 @@
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.database.connection import get_db
 from src.services.aws_conn import get_user
 from src.services.deployments import create_deployment_record, get_deployment, get_user_deployments
 from src.services.terraform_exec import execute_terraform_apply, execute_terraform_destroy
@@ -68,22 +71,32 @@ async def get_deployment_status_endpoint(deployment_id: str):
     }
 
 @router.get("/terraform/{terraform_id}")
-async def get_terraform_plan_endpoint(terraform_id: str, user_id: Optional[str] = None):
+async def get_terraform_plan_endpoint(
+    terraform_id: str,
+    user_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Get a single terraform plan by id. Optional user_id for ownership check.
+    Get a single terraform plan by id from RDS and S3.
+    Optional user_id for ownership check.
     """
-    tf_record = get_terraform_plan(terraform_id)
+    from src.services.terraform_store import get_terraform_plan_from_db
+    
+    tf_record = await get_terraform_plan_from_db(terraform_id, db)
     if not tf_record:
         raise HTTPException(status_code=404, detail="Terraform plan not found")
     if user_id is not None and tf_record.get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this plan")
-    # Normalize keys for frontend (camelCase where expected)
+    
+    # Return normalized response for frontend
     return {
         "user_id": tf_record.get("user_id"),
         "terraformId": tf_record.get("id") or terraform_id,
-        "deploymentId": tf_record.get("deploymentId"),
         "requirements": tf_record.get("requirements"),
-        "terraformCode": tf_record.get("terraformCode"),
+        "structured_requirements": tf_record.get("structured_requirements"),
+        "terraformCode": tf_record.get("terraformCode"),  # main.tf for backward compatibility
+        "terraform_files": tf_record.get("terraform_files", {}),  # All files
+        "s3_prefix": tf_record.get("s3_prefix"),
         "validation": tf_record.get("validation"),
         "status": tf_record.get("status"),
         "created_at": tf_record.get("created_at"),

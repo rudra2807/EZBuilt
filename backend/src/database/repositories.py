@@ -5,7 +5,7 @@ from typing import Optional, List
 from datetime import datetime
 import uuid
 
-from .models import User, AWSIntegration, IntegrationStatus
+from .models import User, AWSIntegration, IntegrationStatus, TerraformPlan
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
@@ -119,3 +119,72 @@ class AWSIntegrationRepository:
             .limit(1)
         )
         return result.scalar_one_or_none()
+
+
+class TerraformPlanRepository:
+    """Repository for terraform_plans table operations"""
+    
+    def __init__(self, session: AsyncSession):
+        self.session = session
+    
+    async def create_plan(
+        self,
+        user_id: str,
+        original_requirements: str,
+        structured_requirements: dict,
+        s3_prefix: str = ""
+    ) -> TerraformPlan:
+        """Create new terraform plan record with status='generating'"""
+        plan = TerraformPlan(
+            user_id=user_id,
+            original_requirements=original_requirements,
+            structured_requirements=structured_requirements,
+            s3_prefix=s3_prefix,
+            status='generating'
+        )
+        self.session.add(plan)
+        await self.session.commit()
+        await self.session.refresh(plan)
+        return plan
+    
+    async def update_plan_status(
+        self,
+        plan_id: uuid.UUID,
+        status: str,
+        s3_prefix: Optional[str] = None,
+        validation_passed: Optional[bool] = None,
+        validation_output: Optional[str] = None
+    ) -> bool:
+        """Update plan status and validation results"""
+        values = {"status": status, "updated_at": datetime.utcnow()}
+        
+        if s3_prefix is not None:
+            values["s3_prefix"] = s3_prefix
+        if validation_passed is not None:
+            values["validation_passed"] = validation_passed
+        if validation_output is not None:
+            values["validation_output"] = validation_output
+        
+        result = await self.session.execute(
+            update(TerraformPlan)
+            .where(TerraformPlan.id == plan_id)
+            .values(**values)
+        )
+        await self.session.commit()
+        return result.rowcount > 0
+    
+    async def get_plan(self, plan_id: uuid.UUID) -> Optional[TerraformPlan]:
+        """Get plan by ID"""
+        result = await self.session.execute(
+            select(TerraformPlan).where(TerraformPlan.id == plan_id)
+        )
+        return result.scalar_one_or_none()
+    
+    async def get_user_plans(self, user_id: str) -> List[TerraformPlan]:
+        """Get all plans for a user"""
+        result = await self.session.execute(
+            select(TerraformPlan)
+            .where(TerraformPlan.user_id == user_id)
+            .order_by(TerraformPlan.created_at.desc())
+        )
+        return result.scalars().all()

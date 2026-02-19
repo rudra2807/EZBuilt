@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveTerraformPlan, TerraformValidation } from "@/app/(app)/lib/saveTerraformPlan";
 import { useAuth } from "../context/AuthContext";
@@ -23,7 +23,6 @@ export default function GenerateTerraformPage() {
         useState<GenerationState>("idle");
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    const [terraformCode, setTerraformCode] = useState("");
     const [validation, setValidation] = useState<TerraformValidation | null>(null);
     const [terraformId, setTerraformId] = useState<string | null>(null);
 
@@ -57,7 +56,6 @@ export default function GenerateTerraformPage() {
         setRequirements(text);
         setErrorMsg(null);
         setGenerationState("idle");
-        setTerraformCode("");
         setValidation(null);
         setTerraformId(null);
     };
@@ -70,7 +68,6 @@ export default function GenerateTerraformPage() {
 
         setGenerationState("generating");
         setErrorMsg(null);
-        setTerraformCode("");
         setValidation(null);
         setTerraformId(null);
 
@@ -106,11 +103,11 @@ export default function GenerateTerraformPage() {
                 return;
             }
 
-            const tfCode = data.code || "";
             const tfId = data.terraform_id as string | undefined;
             const tfValidation = (data.validation || null) as TerraformValidation | null;
 
-            setTerraformCode(tfCode);
+            // Note: Terraform code is now stored in S3, not returned directly
+            // We'll fetch it on the deploy page when needed
             setValidation(tfValidation);
             setTerraformId(tfId || null);
             setGenerationState("generated");
@@ -118,15 +115,6 @@ export default function GenerateTerraformPage() {
         } catch (err: any) {
             setGenerationState("error");
             setErrorMsg(err.message || "Unexpected error while generating Terraform.");
-        }
-    };
-
-    const handleCopyCode = async () => {
-        if (!terraformCode) return;
-        try {
-            await navigator.clipboard.writeText(terraformCode);
-        } catch {
-            // ignore
         }
     };
 
@@ -326,33 +314,15 @@ export default function GenerateTerraformPage() {
                                     </div>
                                 )}
 
-                                {/* Code box */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between text-xs">
-                                        <p className="font-medium text-slate-200">Terraform preview</p>
-                                        <button
-                                            type="button"
-                                            onClick={handleCopyCode}
-                                            disabled={!terraformCode}
-                                            className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-[11px] text-slate-200 hover:border-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed"
-                                        >
-                                            Copy
-                                        </button>
+                                {/* Status message - code is stored in S3 */}
+                                {generationState === "generated" && validation?.valid && (
+                                    <div className="rounded-2xl border border-slate-700 bg-slate-900/60 px-4 py-3 text-xs text-slate-300">
+                                        <p>
+                                            Terraform code has been generated and stored securely.
+                                            You'll be able to review and edit it on the deployment page.
+                                        </p>
                                     </div>
-
-                                    <div className="h-80 rounded-2xl border border-slate-800 bg-slate-950/80 overflow-hidden">
-                                        {terraformCode ? (
-                                            <pre className="h-full w-full overflow-auto px-4 py-3 text-[11px] leading-relaxed font-mono text-slate-100">
-                                                {terraformCode}
-                                            </pre>
-                                        ) : (
-                                            <div className="h-full flex items-center justify-center px-6 text-[11px] text-slate-500 text-center">
-                                                Generated Terraform will appear here after you submit your
-                                                requirements.
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                )}
 
                                 {/* Continue button */}
                                 <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -365,8 +335,7 @@ export default function GenerateTerraformPage() {
                                         Continue to deploy
                                     </button>
                                     <p className="text-[11px] text-slate-500">
-                                        You can still edit the Terraform on the next step before
-                                        apply.
+                                        Review and edit the Terraform code before deployment.
                                     </p>
                                 </div>
                             </div>

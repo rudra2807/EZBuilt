@@ -27,7 +27,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env.local'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from src.services.s3_service import upload_terraform_files, S3ServiceError
-from src.services.terraform_exec import validate_terraform_from_s3
+from src.services.deployment_service import validate_terraform_from_s3
 
 
 # Test configuration

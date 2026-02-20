@@ -9,6 +9,7 @@ from src.apis.routes_connection import router as connection_router
 from src.apis.routes_requirements import router as requirements_router
 from src.apis.routes_terraform import router as terraform_router
 from src.apis.routes_auth import router as auth_router
+from src.apis.routes_deployment import router as deployment_router
 
 app = FastAPI(title="EZBuilt API", version="1.0.0")
 
@@ -25,6 +26,7 @@ app.include_router(auth_router)
 app.include_router(connection_router)
 app.include_router(requirements_router)
 app.include_router(terraform_router)
+app.include_router(deployment_router)
 
 @app.get("/")
 async def root():

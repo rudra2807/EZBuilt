@@ -19,7 +19,7 @@ import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from src.services.s3_service import upload_terraform_files, download_prefix_to_tmp, S3ServiceError
-from src.services.terraform_exec import validate_terraform_from_s3
+from src.services.deployment_service import validate_terraform_from_s3
 from src.utilities.schemas import ValidationResult
 
 

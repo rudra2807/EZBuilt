@@ -5,7 +5,7 @@ from typing import Optional, List
 from datetime import datetime
 import uuid
 
-from .models import User, AWSIntegration, IntegrationStatus, TerraformPlan
+from .models import User, AWSIntegration, IntegrationStatus, TerraformPlan, Deployment, DeploymentStatus
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
@@ -186,5 +186,95 @@ class TerraformPlanRepository:
             select(TerraformPlan)
             .where(TerraformPlan.user_id == user_id)
             .order_by(TerraformPlan.created_at.desc())
+        )
+        return result.scalars().all()
+
+
+class DeploymentRepository:
+    """Repository for deployments table operations"""
+    
+    def __init__(self, session: AsyncSession):
+        self.session = session
+    
+    async def create(
+        self,
+        user_id: str,
+        terraform_plan_id: uuid.UUID,
+        aws_connection_id: uuid.UUID
+    ) -> 'Deployment':
+        """Create a new deployment record with status STARTED"""
+        from .models import Deployment, DeploymentStatus
+        
+        deployment = Deployment(
+            user_id=user_id,
+            terraform_plan_id=terraform_plan_id,
+            aws_connection_id=aws_connection_id,
+            status=DeploymentStatus.STARTED
+        )
+        self.session.add(deployment)
+        await self.session.commit()
+        await self.session.refresh(deployment)
+        return deployment
+    
+    async def get_by_id(self, deployment_id: uuid.UUID, user_id: str) -> Optional['Deployment']:
+        """Get deployment by ID with user_id filtering for isolation"""
+        from .models import Deployment
+        
+        result = await self.session.execute(
+            select(Deployment)
+            .where(Deployment.id == deployment_id)
+            .where(Deployment.user_id == user_id)
+        )
+        return result.scalar_one_or_none()
+    
+    async def update_status(
+        self,
+        deployment_id: uuid.UUID,
+        status: 'DeploymentStatus',
+        output: Optional[str] = None,
+        error_message: Optional[str] = None
+    ) -> None:
+        """Update deployment status and optional output/error"""
+        from .models import Deployment, DeploymentStatus
+        
+        values = {
+            "status": status,
+            "updated_at": datetime.utcnow()
+        }
+        
+        if output is not None:
+            values["output"] = output
+        if error_message is not None:
+            values["error_message"] = error_message
+        
+        # Set completed_at for terminal states
+        if status in [
+            DeploymentStatus.SUCCESS,
+            DeploymentStatus.FAILED,
+            DeploymentStatus.DESTROYED,
+            DeploymentStatus.DESTROY_FAILED
+        ]:
+            values["completed_at"] = datetime.utcnow()
+        
+        await self.session.execute(
+            update(Deployment)
+            .where(Deployment.id == deployment_id)
+            .values(**values)
+        )
+        await self.session.commit()
+    
+    async def get_user_deployments(
+        self,
+        user_id: str,
+        limit: int = 50
+    ) -> List['Deployment']:
+        """Get user's deployment history ordered by created_at DESC"""
+        from .models import Deployment
+        
+        result = await self.session.execute(
+            select(Deployment)
+            .where(Deployment.user_id == user_id)
+            .order_by(Deployment.created_at.desc())
+            .limit(limit)
         )
         return result.scalars().all()

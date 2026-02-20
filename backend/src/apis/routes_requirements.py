@@ -5,7 +5,7 @@ import os
 import logging
 
 from src.services.deployments import create_deployment_record
-from src.services.terraform_exec import validate_terraform, validate_terraform_from_s3
+from src.services.deployment_service import validate_terraform_from_s3
 from src.services.structure_requirements import generate_terraform_code, structure_requirements
 from src.services.terraform_store import get_terraform_plan, save_terraform_code, update_terraform_plan
 from src.services.s3_service import upload_terraform_files, S3ServiceError

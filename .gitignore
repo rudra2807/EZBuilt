@@ -11,14 +11,17 @@ __pycache__/
 *.cover
 *.log
 *.tmp
+.hypothesis/
 
 ############################
 # Backend (FastAPI / Python)
 ############################
 backend/__pycache__/
 backend/.pytest_cache/
+backend/.hypothesis/
 backend/*.log
 backend/*.sqlite3
+backend/.env.local
 
 ############################
 # Frontend (React + TypeScript)
@@ -26,6 +29,7 @@ backend/*.sqlite3
 frontend/node_modules/
 frontend/.pnp
 frontend/.pnp.js
+frontend/.next/
 
 # Testing
 frontend/coverage/
@@ -73,6 +77,13 @@ terraform-demo
 # Uncomment these if scripts are generated automatically
 # terraform-demo/*.sh
 # terraform-demo/*.ps1
+
+############################
+# IDE and Editor files
+############################
+.vscode/
+.cursor/
+.kiro/
 
 ############################
 # OS-specific files

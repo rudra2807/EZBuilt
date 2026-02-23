@@ -93,19 +93,16 @@ def structure_requirements(requirements: str) -> str:
         print(f"[structure_requirements] ERROR: {str(e)}")
         raise Exception(f"Error structuring requirements: {str(e)}")
 
-def generate_terraform_code(structured_requirements: str) -> str:
-    """Generate Terraform code from structured requirements using Bedrock"""
+def generate_terraform_code(structured_requirements: str) -> dict:
+    """Generate Terraform code from structured requirements using Bedrock
+    
+    Returns:
+        dict: Dictionary with 'files' key containing terraform files
+              e.g., {'files': {'main.tf': '...', 'variables.tf': '...', 'outputs.tf': '...'}}
+    """
     print(f"[generate_terraform_code] Starting generation (input length: {len(structured_requirements)} chars)")
 
     try:
-        # data_schema = _load_json_file("data_sources_list")
-        # available_data_sources = data_schema["available_data_sources"]
-        # print(f"[generate_terraform_code] Loaded {len(available_data_sources)} data sources")
-
-        # resources_schema = _load_json_file("resources_schema")
-        # available_resources = resources_schema["available_resources"]
-        # print(f"[generate_terraform_code] Loaded {len(available_resources)} resources")
-
         instructions = instruction_set(
             json.dumps(structured_requirements, indent=2)
         )
@@ -118,18 +115,22 @@ def generate_terraform_code(structured_requirements: str) -> str:
 
         # Remove markdown fences if present
         if cleaned.startswith("```"):
-            cleaned = cleaned.split("```")[1]  # remove first fence
-            cleaned = cleaned.replace("json", "", 1).strip()
+            lines = cleaned.split("\n")
+            # Remove first line (```json or ```)
+            lines = lines[1:]
+            # Remove last line if it's ```
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            cleaned = "\n".join(lines).strip()
 
         terraform_output = json.loads(cleaned)
-        # terraform_output = json.loads(tf_code_str)
 
-        assert 'files' in terraform_output
-        assert 'main.tf' in terraform_output['files']
-        assert 'variables.tf' in terraform_output['files']
-        assert 'outputs.tf' in terraform_output['files']
+        assert 'files' in terraform_output, "Response missing 'files' key"
+        assert 'main.tf' in terraform_output['files'], "Response missing 'main.tf'"
+        assert 'variables.tf' in terraform_output['files'], "Response missing 'variables.tf'"
+        assert 'outputs.tf' in terraform_output['files'], "Response missing 'outputs.tf'"
         
-        print(f"[generate_terraform_code] Completed! Response length: {len(terraform_output)}")
+        print(f"[generate_terraform_code] Completed! Generated {len(terraform_output['files'])} files")
         return terraform_output
 
     except ClientError as e:

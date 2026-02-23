@@ -1,3 +1,4 @@
 .env.local
 deployments
 src/utilities/ezbuilt-dev-firebase.json
+model_instructions

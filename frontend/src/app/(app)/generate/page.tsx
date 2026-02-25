@@ -2,8 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveTerraformPlan, TerraformValidation } from "@/app/(app)/lib/saveTerraformPlan";
 import { useAuth } from "../context/AuthContext";
+
+// Type definition for Terraform validation result (matches backend ValidationResult)
+interface TerraformValidation {
+    valid: boolean;
+    errors?: string | null;
+}
 
 
 const API_BASE_URL =

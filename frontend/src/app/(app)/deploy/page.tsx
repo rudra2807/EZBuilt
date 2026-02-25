@@ -2,7 +2,32 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { TerraformPlan, saveTerraformPlan } from "@/app/(app)/lib/saveTerraformPlan";
+
+// TerraformPlan type definition
+type TerraformPlan = {
+    user_id: string;
+    terraformId: string;
+    requirements: string;
+    structured_requirements?: any;
+    terraformCode: string;
+    terraform_files?: Record<string, string>;
+    s3_prefix?: string;
+    validation?: {
+        valid: boolean;
+        errors?: string;
+    } | null;
+    status: string;
+    created_at: string;
+    updatedAt?: string;
+    latest_deployment?: {
+        id: string;
+        status: string;
+        output: string | null;
+        error_message: string | null;
+        created_at: string | null;
+        completed_at: string | null;
+    } | null;
+};
 
 async function loadTerraformPlanFromApi(
     terraformId: string,
@@ -15,16 +40,21 @@ async function loadTerraformPlanFromApi(
     const res = await fetch(url.toString());
     if (!res.ok) return null;
     const data = await res.json();
+
+    // Map backend response to frontend type
     return {
         user_id: data.user_id,
-        terraformId: data.id,
-        deploymentId: data.deploymentId,
+        terraformId: data.terraformId,
         requirements: data.requirements,
-        terraformCode: data.terraformCode,
+        structured_requirements: data.structured_requirements,
+        terraformCode: data.terraformCode || "",
+        terraform_files: data.terraform_files,
+        s3_prefix: data.s3_prefix,
         validation: data.validation ?? null,
         status: data.status,
-        createdAt: data.created_at,
+        created_at: data.created_at,
         updatedAt: data.updatedAt,
+        latest_deployment: data.latest_deployment ?? null,
     };
 }
 import { useAuth } from "../context/AuthContext";
@@ -33,11 +63,13 @@ const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 type DeploymentStatusResponse = {
-    deployment_id: string;
+    id: string;
     status: string;
-    output: string;
-    started_at?: string | null;
-    completed_at?: string | null;
+    output: string | null;
+    error_message: string | null;
+    created_at: string;
+    updated_at: string;
+    completed_at: string | null;
 };
 
 type Operation = "apply" | "destroy";
@@ -68,12 +100,17 @@ export default function DeployPage() {
 
     const [startingDestroy, setStartingDestroy] = useState(false);
 
+    // AWS connection state
+    const [awsConnections, setAwsConnections] = useState<any[]>([]);
+    const [selectedConnectionId, setSelectedConnectionId] = useState<string>("");
+    const [awsConnectionError, setAwsConnectionError] = useState<string | null>(null);
+
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     const { user, loading: authLoading } = useAuth();
-    const userId = user?.uid || null;
+    const userId = user?.sub || null;
 
-    // Load plan from backend API (avoids client Firestore calls that can be blocked)
+    // Load plan from backend API
     useEffect(() => {
         if (!terraformId) {
             setPlanError("Missing terraformId in URL.");
@@ -92,10 +129,21 @@ export default function DeployPage() {
                         "Could not find Terraform plan. Try generating it again."
                     );
                 } else {
-                    setDeploymentId(loaded.deploymentId || null);
-                    console.log("Deployment ID: " + deploymentId)
                     setPlan(loaded);
                     setEditedCode(loaded.terraformCode || "");
+
+                    // Use latest_deployment from the API response
+                    if (loaded.latest_deployment) {
+                        setDeploymentId(loaded.latest_deployment.id);
+                        console.log("Deployment status: " + loaded.latest_deployment.status)
+                        setDeploymentStatus(loaded.latest_deployment.status);
+                        if (loaded.latest_deployment.output) {
+                            setDeploymentOutput(loaded.latest_deployment.output);
+                        }
+                        if (loaded.latest_deployment.error_message) {
+                            setDeploymentError(loaded.latest_deployment.error_message);
+                        }
+                    }
                 }
             } catch (err: any) {
                 if (!cancelled) {
@@ -111,11 +159,48 @@ export default function DeployPage() {
         return () => {
             cancelled = true;
         };
-    }, [terraformId, userId]);
+    }, [terraformId, userId, user]);
+
+    // Load AWS connections from backend API
+    useEffect(() => {
+        if (!user) return;
+
+        let cancelled = false;
+
+        (async () => {
+            try {
+                setAwsConnectionError(null);
+
+                const response = await fetch(`${API_BASE_URL}/api/user/${user.sub}/aws-connections`);
+
+                if (cancelled) return;
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setAwsConnections(data.connections || []);
+                    if (data.connections?.length > 0) {
+                        setSelectedConnectionId(data.connections[0].id);
+                    }
+                } else {
+                    const errorData = await response.json().catch(() => null);
+                    const errorMessage = errorData?.detail || errorData?.message || 'Failed to load AWS connections';
+                    setAwsConnectionError(errorMessage);
+                }
+            } catch (err: any) {
+                if (!cancelled) {
+                    setAwsConnectionError(err.message || 'Failed to load AWS connections');
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [user]);
 
     // Start apply
     const handleStartDeployment = async () => {
-        if (!terraformId) return;
+        if (!terraformId || !selectedConnectionId || !user) return;
         setOperation("apply");
         setStartingDeployment(true);
         setDeploymentError(null);
@@ -123,17 +208,15 @@ export default function DeployPage() {
         setDeploymentStatus(null);
 
         try {
-            console.log("Deployment ID: " + deploymentId)
-            console.log(userId)
             const res = await fetch(`${API_BASE_URL}/api/deploy`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: userId,
-                    terraform_id: terraformId,
-                    deployment_id: plan?.deploymentId,
+                    user_id: user.sub,
+                    terraform_plan_id: terraformId,
+                    aws_connection_id: selectedConnectionId,
                 }),
             });
 
@@ -163,7 +246,7 @@ export default function DeployPage() {
 
     // Start destroy
     const handleStartDestroy = async () => {
-        if (!terraformId) return;
+        if (!deploymentId || !user) return;
         setOperation("destroy");
         setStartingDestroy(true);
         setDeploymentError(null);
@@ -177,8 +260,7 @@ export default function DeployPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: userId,
-                    terraform_id: terraformId,
+                    user_id: user.sub,  // Pass user_id in body as workaround
                     deployment_id: deploymentId,
                 }),
             });
@@ -208,13 +290,12 @@ export default function DeployPage() {
 
     // Poll status for both apply and destroy
     useEffect(() => {
-        console.log("setPlan deploymentId:", plan?.deploymentId);
-        if (!deploymentId) return;
+        if (!deploymentId || !user) return;
 
         const poll = async () => {
             try {
                 const res = await fetch(
-                    `${API_BASE_URL}/api/deployment/${deploymentId}/status`
+                    `${API_BASE_URL}/api/deployment/${deploymentId}/status?user_id=${encodeURIComponent(user.sub)}`
                 );
 
                 if (!res.ok) {
@@ -229,6 +310,10 @@ export default function DeployPage() {
                 const data = (await res.json()) as DeploymentStatusResponse;
                 setDeploymentStatus(data.status);
                 setDeploymentOutput(data.output || "");
+
+                if (data.error_message) {
+                    setDeploymentError(data.error_message);
+                }
 
                 if (
                     data.status === "success" ||
@@ -263,15 +348,12 @@ export default function DeployPage() {
                 pollIntervalRef.current = null;
             }
         };
-    }, [deploymentId]);
+    }, [deploymentId, user]);
 
     const statusBadge = (() => {
-        if (deploymentId) {
+        if (!deploymentId) {
             return {
-                text:
-                    operation === "destroy"
-                        ? "Ready to destroy resources"
-                        : "Ready to deploy",
+                text: "No deployment yet",
                 tone: "idle" as const,
             };
         }
@@ -283,7 +365,7 @@ export default function DeployPage() {
                 return { text: "Destroy failed", tone: "error" as const };
             if (deploymentStatus === "started" || deploymentStatus === "running")
                 return { text: "Destroy in progress", tone: "running" as const };
-            return { text: "Checking destroy status", tone: "running" as const };
+            return { text: "Ready to destroy", tone: "idle" as const };
         }
 
         if (deploymentStatus === "success")
@@ -292,7 +374,7 @@ export default function DeployPage() {
             return { text: "Deployment failed", tone: "error" as const };
         if (deploymentStatus === "started" || deploymentStatus === "running")
             return { text: "Deployment in progress", tone: "running" as const };
-        return { text: "Checking deployment", tone: "running" as const };
+        return { text: "Ready to deploy", tone: "idle" as const };
     })();
 
     const statusClasses = (() => {
@@ -311,13 +393,26 @@ export default function DeployPage() {
     const canDeploy =
         !!plan &&
         !!terraformId &&
+        !!selectedConnectionId &&
+        !!user &&
         !startingDeployment &&
-        deploymentId &&
+        (!deploymentId || deploymentStatus === 'destroyed' || deploymentStatus === 'destroy_failed') &&  // Can deploy if no deployment OR after destroy
         (!plan.validation || plan.validation.valid);
 
     const canDestroy =
-        !!plan && !!terraformId && !startingDestroy && deploymentId;
+        !!deploymentId &&
+        deploymentStatus === 'success' &&
+        !startingDestroy;
 
+    // Debug logging
+    console.log('Button state debug:', {
+        deploymentId,
+        deploymentStatus,
+        canDeploy,
+        canDestroy,
+        hasDeploymentId: !!deploymentId,
+        statusCheck: deploymentStatus === 'destroyed' || deploymentStatus === 'destroy_failed'
+    });
     const handleCopyCode = async () => {
         const codeToCopy = isEditingCode ? editedCode : plan?.terraformCode;
         if (!codeToCopy) return;
@@ -341,7 +436,7 @@ export default function DeployPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    user_id: userId,              // from auth
+                    user_id: userId,
                     terraform_id: terraformId,
                     code: editedCode,
                 }),
@@ -369,20 +464,6 @@ export default function DeployPage() {
                     }
                     : prev
             );
-
-            // Optionally mirror to Firestore (best-effort; backend is source of truth)
-            try {
-                await saveTerraformPlan({
-                    user_id: userId,
-                    terraformId,
-                    deploymentId: plan.deploymentId,
-                    requirements: plan.requirements,
-                    terraformCode: editedCode,
-                    validation: newValidation,
-                });
-            } catch {
-                // Ignore (e.g. blocked by browser); backend already saved
-            }
 
             setIsEditingCode(false);
             setEditSuccess("Terraform code updated and revalidated.");
@@ -450,7 +531,7 @@ export default function DeployPage() {
                         {/* Plan state */}
                         {planLoading && (
                             <p className="text-xs text-slate-400">
-                                Loading Terraform plan from Firestore.
+                                Loading Terraform plan from backend API.
                             </p>
                         )}
 
@@ -583,6 +664,38 @@ export default function DeployPage() {
                                     </div>
                                 </div>
 
+                                {/* AWS Connection Selector */}
+                                <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-medium text-slate-200">
+                                            AWS Connection
+                                        </p>
+                                        {awsConnectionError && (
+                                            <div className="rounded-2xl border border-red-500/70 bg-red-500/10 px-4 py-3 text-xs text-red-100">
+                                                {awsConnectionError}
+                                            </div>
+                                        )}
+                                        {awsConnections.length > 0 ? (
+                                            <select
+                                                value={selectedConnectionId}
+                                                onChange={(e) => setSelectedConnectionId(e.target.value)}
+                                                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 focus:border-indigo-400 focus:outline-none"
+                                            >
+                                                {awsConnections.map((conn) => (
+                                                    <option key={conn.id} value={conn.id}>
+                                                        {conn.aws_account_id || conn.external_id}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <div className="rounded-xl border border-amber-500/60 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
+                                                <p className="font-medium mb-1">No AWS connections found</p>
+                                                <p>You need to connect an AWS account before deploying.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
                                 {/* Apply and destroy controls */}
                                 <div className="space-y-3">
                                     {plan.validation && !plan.validation.valid && (
@@ -702,13 +815,13 @@ export default function DeployPage() {
                                             </pre>
                                         ) : (
                                             <div className="h-full flex flex-col items-center justify-center gap-2 px-6 text-[11px] text-slate-500 text-center">
-                                                {deploymentId && operation === "apply" && (
+                                                {!deploymentId && (
                                                     <p>
                                                         Click "Deploy to AWS" on the left to start Terraform
                                                         apply and stream the logs here.
                                                     </p>
                                                 )}
-                                                {deploymentId && operation === "destroy" && (
+                                                {deploymentId && operation === "destroy" && !deploymentOutput && (
                                                     <p>
                                                         Click "Destroy resources" on the left to run
                                                         Terraform destroy and stream the logs here.

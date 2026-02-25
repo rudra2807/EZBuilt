@@ -11,34 +11,16 @@ import logging
 import uuid
 import shutil
 import subprocess
-import re
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.database.models import DeploymentStatus
 from src.database.repositories import DeploymentRepository
 from src.services.s3_service import download_prefix_to_tmp, S3ServiceError
 from src.services.aws_conn import assume_role
 from src.utilities.schemas import ValidationResult
+from src.utilities.text_utils import strip_ansi_codes
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
-
-def strip_ansi_codes(text: str) -> str:
-    """
-    Remove ANSI color codes from text.
-    
-    Args:
-        text: Text containing ANSI escape sequences
-    
-    Returns:
-        Clean text with ANSI codes removed
-    
-    Example:
-        >>> strip_ansi_codes("\x1B[32mSuccess\x1B[0m")
-        "Success"
-    """
-    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-    return ansi_escape.sub('', text)
 
 
 async def execute_terraform_apply(
@@ -71,8 +53,27 @@ async def execute_terraform_apply(
         db: Database session
     """
     repo = DeploymentRepository(db)
-    tmp_dir = f"/tmp/{deployment_id}"
-    bucket = os.environ.get("TERRAFORM_SOURCE_BUCKET")
+    import tempfile
+    import platform
+    
+    # Use platform-appropriate temp directory
+    if platform.system() == 'Windows':
+        tmp_base = tempfile.gettempdir()
+    else:
+        tmp_base = "/tmp"
+    
+    tmp_dir = os.path.join(tmp_base, str(deployment_id))
+    bucket = os.environ.get("EZBUILT_TERRAFORM_SOURCE_BUCKET") or os.environ.get("TERRAFORM_SOURCE_BUCKET")
+    
+    if not bucket:
+        error_msg = "EZBUILT_TERRAFORM_SOURCE_BUCKET environment variable not set"
+        logger.error(error_msg, extra={"deployment_id": str(deployment_id)})
+        await repo.update_status(
+            deployment_id,
+            DeploymentStatus.FAILED,
+            error_message=error_msg
+        )
+        return
 
     try:
         logger.info(
@@ -221,6 +222,42 @@ async def execute_terraform_apply(
                     "status": "success"
                 }
             )
+            
+            # Upload terraform.tfstate to S3 for future destroy operations
+            tfstate_path = os.path.join(tmp_dir, "terraform.tfstate")
+            if os.path.exists(tfstate_path):
+                try:
+                    logger.info(
+                        f"Uploading terraform.tfstate to S3",
+                        extra={
+                            "deployment_id": str(deployment_id),
+                            "s3_prefix": s3_prefix
+                        }
+                    )
+                    with open(tfstate_path, 'r') as f:
+                        tfstate_content = f.read()
+                    
+                    from src.services.s3_service import upload_terraform_files
+                    upload_terraform_files(
+                        bucket=bucket,
+                        prefix=s3_prefix,
+                        files={"terraform.tfstate": tfstate_content}
+                    )
+                    logger.info(
+                        f"Successfully uploaded terraform.tfstate",
+                        extra={"deployment_id": str(deployment_id)}
+                    )
+                except Exception as state_upload_error:
+                    logger.error(
+                        f"Failed to upload terraform.tfstate: {str(state_upload_error)}",
+                        extra={
+                            "deployment_id": str(deployment_id),
+                            "error": str(state_upload_error)
+                        }
+                    )
+                    # Don't fail the deployment if state upload fails
+                    # The deployment was successful, we just couldn't save the state
+            
             await repo.update_status(
                 deployment_id,
                 DeploymentStatus.SUCCESS,
@@ -284,12 +321,13 @@ async def execute_terraform_destroy(
     
     Flow:
     1. Update status to RUNNING
-    2. Assume AWS role
-    3. Run terraform destroy (using existing state in /tmp/{deployment_id}/)
-    4. Update status to DESTROYED or DESTROY_FAILED
-    5. Cleanup temp directory
-    
-    Note: Assumes the deployment directory still exists from the apply operation.
+    2. Get deployment details to find terraform_plan_id and s3_prefix
+    3. Download Terraform files from S3 to temp directory
+    4. Assume AWS role
+    5. Run terraform init
+    6. Run terraform destroy
+    7. Update status to DESTROYED or DESTROY_FAILED
+    8. Cleanup temp directory
     
     Args:
         deployment_id: UUID of the deployment record
@@ -298,7 +336,17 @@ async def execute_terraform_destroy(
         db: Database session
     """
     repo = DeploymentRepository(db)
-    tmp_dir = f"/tmp/{deployment_id}"
+    import tempfile
+    import platform
+    
+    # Use platform-appropriate temp directory
+    if platform.system() == 'Windows':
+        tmp_base = tempfile.gettempdir()
+    else:
+        tmp_base = "/tmp"
+    
+    tmp_dir = os.path.join(tmp_base, str(deployment_id))
+    bucket = os.environ.get("EZBUILT_TERRAFORM_SOURCE_BUCKET") or os.environ.get("TERRAFORM_SOURCE_BUCKET")
 
     try:
         logger.info(
@@ -308,6 +356,60 @@ async def execute_terraform_destroy(
 
         # Update status to RUNNING
         await repo.update_status(deployment_id, DeploymentStatus.RUNNING)
+        
+        # Get deployment to find terraform_plan_id
+        from sqlalchemy import select
+        from src.database.models import Deployment, TerraformPlan
+        result = await db.execute(
+            select(Deployment).where(Deployment.id == deployment_id)
+        )
+        deployment = result.scalar_one_or_none()
+        
+        if not deployment:
+            raise Exception("Deployment not found")
+        
+        # Get terraform plan to find s3_prefix
+        result = await db.execute(
+            select(TerraformPlan).where(TerraformPlan.id == deployment.terraform_plan_id)
+        )
+        plan = result.scalar_one_or_none()
+        
+        if not plan or not plan.s3_prefix:
+            raise Exception("Terraform plan or S3 prefix not found")
+        
+        if not bucket:
+            raise Exception("EZBUILT_TERRAFORM_SOURCE_BUCKET environment variable not set")
+        
+        # Download files from S3
+        logger.info(
+            f"Downloading files from s3://{bucket}/{plan.s3_prefix}",
+            extra={
+                "bucket": bucket,
+                "prefix": plan.s3_prefix,
+                "deployment_id": str(deployment_id)
+            }
+        )
+        try:
+            downloaded_files = download_prefix_to_tmp(bucket, plan.s3_prefix, tmp_dir)
+            logger.info(
+                f"Downloaded {len(downloaded_files)} files to {tmp_dir}",
+                extra={
+                    "file_count": len(downloaded_files),
+                    "tmp_dir": tmp_dir,
+                    "deployment_id": str(deployment_id)
+                }
+            )
+        except S3ServiceError as e:
+            logger.error(
+                f"S3 download failed: {str(e)}",
+                extra={"deployment_id": str(deployment_id), "error": str(e)}
+            )
+            await repo.update_status(
+                deployment_id,
+                DeploymentStatus.DESTROY_FAILED,
+                error_message=f"S3 download failed: {str(e)}"
+            )
+            return
 
         # Assume AWS role
         logger.info(
@@ -326,6 +428,36 @@ async def execute_terraform_destroy(
             'AWS_SECRET_ACCESS_KEY': creds['SecretAccessKey'],
             'AWS_SESSION_TOKEN': creds['SessionToken']
         })
+        
+        # Terraform init
+        logger.info(
+            f"Running terraform init in {tmp_dir}",
+            extra={
+                "command": "terraform init",
+                "working_directory": tmp_dir,
+                "deployment_id": str(deployment_id)
+            }
+        )
+        init_result = subprocess.run(
+            ['terraform', 'init'],
+            cwd=tmp_dir,
+            env=env,
+            capture_output=True,
+            text=True
+        )
+
+        if init_result.returncode != 0:
+            error = strip_ansi_codes(init_result.stderr or init_result.stdout)
+            logger.error(
+                f"Terraform init failed: {error}",
+                extra={"deployment_id": str(deployment_id), "error": error}
+            )
+            await repo.update_status(
+                deployment_id,
+                DeploymentStatus.DESTROY_FAILED,
+                error_message=f"Init failed: {error}"
+            )
+            return
 
         # Terraform destroy
         logger.info(

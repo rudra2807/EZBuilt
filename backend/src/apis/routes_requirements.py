@@ -4,10 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import os
 import logging
 
-from src.services.deployments import create_deployment_record
 from src.services.deployment_service import validate_terraform_from_s3
+from src.services.terraform_exec import validate_terraform
 from src.services.structure_requirements import generate_terraform_code, structure_requirements
-from src.services.terraform_store import get_terraform_plan, save_terraform_code, update_terraform_plan
+from src.services.terraform_store import get_terraform_plan_from_db
 from src.services.s3_service import upload_terraform_files, S3ServiceError
 from src.database.connection import get_db
 from src.database.repositories import TerraformPlanRepository
@@ -173,15 +173,20 @@ async def structure_requirements_endpoint(
         raise HTTPException(status_code=500, detail=error_msg)
 
 @router.post("/update-terraform")
-async def update_terraform_endpoint(request: UpdateTerraformRequest):
+async def update_terraform_endpoint(
+    request: UpdateTerraformRequest,
+    db: AsyncSession = Depends(get_db)
+):
     """
     Update an existing terraform configuration and revalidate it.
     """
     print(f"[API] Received update-terraform request for terraform_id: {request.terraform_id}")
     
     try:
-        # Get existing record
-        tf_record = get_terraform_plan(request.terraform_id)
+        repo = TerraformPlanRepository(db)
+        
+        # Get existing record from database
+        tf_record = await get_terraform_plan_from_db(request.terraform_id, db)
         if not tf_record:
             raise HTTPException(status_code=404, detail="Terraform code not found")
         
@@ -189,17 +194,20 @@ async def update_terraform_endpoint(request: UpdateTerraformRequest):
         if tf_record["user_id"] != request.user_id:
             raise HTTPException(status_code=403, detail="Not authorized to update this terraform config")
 
-        # Revalidate edited code (optional: pass deployment_id if you want to run validate in deployment dir)
+        # Revalidate edited code
         validation_result = validate_terraform(
             request.code, tf_record.get("deploymentId") or request.terraform_id
         )
-        updated = update_terraform_plan(
-            request.terraform_id,
-            terraform_code=request.code,
-            validation=validation_result.model_dump(),
+        
+        # Update validation results in database
+        import uuid
+        plan_id = uuid.UUID(request.terraform_id)
+        await repo.update_plan_status(
+            plan_id=plan_id,
+            status='generated',
+            validation_passed=validation_result.valid,
+            validation_output=validation_result.errors
         )
-        if not updated:
-            raise HTTPException(status_code=500, detail="Failed to persist terraform update")
 
         print(f"[API] Successfully updated terraform_id: {request.terraform_id}")
         return {

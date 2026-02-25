@@ -1,9 +1,8 @@
 import uuid
 from datetime import datetime
 import boto3
-from src.utilities.firebase_client import get_firestore_client
-
-db = get_firestore_client()
+from sqlalchemy.ext.asyncio import AsyncSession
+from src.database.repositories import AWSIntegrationRepository
 
 def generate_external_id(user_id: str) -> str:
     """Generate unique external ID for cross-account access"""
@@ -18,12 +17,19 @@ def generate_external_id(user_id: str) -> str:
 #         'created_at': datetime.utcnow().isoformat()
 #     }
 
-def get_user_by_external_id(external_id: str):
-    """Get user by external ID"""
-    doc = db.collection("users").where("external_id", "==", external_id).limit(1).get()
-    if not doc:
+async def get_user_by_external_id(external_id: str, db: AsyncSession):
+    """Get user by external ID from PostgreSQL"""
+    repo = AWSIntegrationRepository(db)
+    integration = await repo.get_by_external_id(external_id)
+    
+    if not integration:
         return None
-    return doc[0].to_dict()
+    
+    return {
+        'user_id': integration.user_id,
+        'external_id': integration.external_id,
+        'roleArn': integration.role_arn
+    }
 
 # def save_role_arn(user_id: str, role_arn: str):
 #     """Save role ARN to user record"""
@@ -39,12 +45,19 @@ def get_user_by_external_id(external_id: str):
 #             connections_db[external_id]['status'] = 'connected'
 #             connections_db[external_id]['role_arn'] = role_arn
 
-def get_user(user_id: str):
-    """Get user record"""
-    doc = db.collection("awsConnections").document(user_id).get()
-    if not doc.exists:
+async def get_user(user_id: str, db: AsyncSession):
+    """Get user's AWS connection from PostgreSQL"""
+    repo = AWSIntegrationRepository(db)
+    integration = await repo.get_active_integration(user_id)
+    
+    if not integration:
         return None
-    return doc.to_dict()
+    
+    return {
+        'roleArn': integration.role_arn,
+        'externalId': integration.external_id,
+        'aws_account_id': integration.aws_account_id
+    }
 
 def assume_role(role_arn: str, external_id: str):
     """Assume role in user's AWS account"""

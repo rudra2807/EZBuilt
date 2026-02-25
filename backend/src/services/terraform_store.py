@@ -2,26 +2,6 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from src.utilities.firebase_client import get_firestore_client
-
-def _get_collection():
-    db = get_firestore_client()
-    return db.collection("terraformPlans")
-
-def save_terraform_code(user_id: str, requirements: str, tf_code: str) -> str:
-    """Save generated terraform code to Firestore (DEPRECATED - use RDS)"""
-    tf_id = str(uuid.uuid4())
-    collection = _get_collection()
-    doc_ref = collection.document(tf_id)
-    doc_ref.set({
-        'id': tf_id,
-        'user_id': user_id,
-        'requirements': requirements,
-        'terraformCode': tf_code,
-        'created_at': datetime.utcnow().isoformat()
-    })
-    return tf_id
-
 async def get_terraform_plan_from_db(terraform_id: str, db_session):
     """Get terraform plan from RDS and download files from S3"""
     from src.database.repositories import TerraformPlanRepository
@@ -67,43 +47,32 @@ async def get_terraform_plan_from_db(terraform_id: str, db_session):
         "updatedAt": plan.updated_at.isoformat() if plan.updated_at else None,
     }
 
-def get_terraform_plan(terraform_id: str):
-    """Get terraform code by ID from Firestore (DEPRECATED - use get_terraform_plan_from_db)"""
-    collection = _get_collection()
-    doc = collection.document(terraform_id).get()
-    if not doc.exists:
-        return None
-    return doc.to_dict()
+async def get_terraform_plan(terraform_id: str, db_session):
+    """Get terraform code by ID from PostgreSQL"""
+    return await get_terraform_plan_from_db(terraform_id, db_session)
 
-def get_user_terraform_plans(user_id: str) -> List[dict]:
-    """Get all terraform plans for a user from Firestore (DEPRECATED - use RDS)"""
-    collection = _get_collection()
-    docs = collection.where("user_id", "==", user_id).stream()
-    return [doc.to_dict() for doc in docs]
-
-
-def update_terraform_plan(
-    terraform_id: str,
-    *,
-    terraform_code: Optional[str] = None,
-    requirements: Optional[str] = None,
-    deployment_id: Optional[str] = None,
-    validation: Optional[dict] = None,
-) -> bool:
-    """Update an existing terraform plan in Firestore (DEPRECATED - use RDS)"""
-    collection = _get_collection()
-    doc_ref = collection.document(terraform_id)
-    doc = doc_ref.get()
-    if not doc.exists:
-        return False
-    update_data = {"updatedAt": datetime.utcnow().isoformat()}
-    if terraform_code is not None:
-        update_data["terraformCode"] = terraform_code
-    if requirements is not None:
-        update_data["requirements"] = requirements
-    if deployment_id is not None:
-        update_data["deploymentId"] = deployment_id
-    if validation is not None:
-        update_data["validation"] = validation
-    doc_ref.update(update_data)
-    return True
+async def get_user_terraform_plans(user_id: str, db_session) -> List[dict]:
+    """Get all terraform plans for a user from PostgreSQL"""
+    from src.database.repositories import TerraformPlanRepository
+    
+    repo = TerraformPlanRepository(db_session)
+    plans = await repo.get_user_plans(user_id)
+    
+    # Convert to dict format for backward compatibility
+    return [
+        {
+            'id': str(plan.id),
+            'user_id': plan.user_id,
+            'requirements': plan.original_requirements,
+            'structured_requirements': plan.structured_requirements,
+            's3_prefix': plan.s3_prefix,
+            'validation': {
+                'valid': plan.validation_passed if plan.validation_passed is not None else False,
+                'errors': plan.validation_output
+            },
+            'status': plan.status,
+            'created_at': plan.created_at.isoformat() if plan.created_at else None,
+            'updatedAt': plan.updated_at.isoformat() if plan.updated_at else None,
+        }
+        for plan in plans
+    ]

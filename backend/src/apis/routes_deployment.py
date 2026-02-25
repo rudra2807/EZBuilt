@@ -33,12 +33,14 @@ router = APIRouter(prefix="/api", tags=["deployment"])
 
 class DeployRequest(BaseModel):
     """Request model for deploying Terraform infrastructure"""
+    user_id: str  # Temporary: until JWT auth is implemented
     terraform_plan_id: uuid.UUID
     aws_connection_id: uuid.UUID
 
 
 class DestroyRequest(BaseModel):
     """Request model for destroying Terraform infrastructure"""
+    user_id: str  # Temporary: until JWT auth is implemented
     deployment_id: uuid.UUID
 
 
@@ -93,14 +95,15 @@ async def get_current_user_id() -> str:
 async def deploy(
     request: DeployRequest,
     background_tasks: BackgroundTasks,
-    user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """
     Trigger Terraform deployment.
     
+    Temporary: Accepts user_id in request body until JWT auth is implemented.
+    
     Flow:
-    1. Extract user_id from JWT token
+    1. Get user_id from request body (temporary workaround)
     2. Validate terraform_plan ownership and existence
     3. Validate aws_connection ownership, existence, and status
     4. Create deployment record with status STARTED
@@ -108,9 +111,8 @@ async def deploy(
     6. Return deployment_id with 202 Accepted
     
     Args:
-        request: Deploy request with terraform_plan_id and aws_connection_id
+        request: Deploy request with user_id, terraform_plan_id and aws_connection_id
         background_tasks: FastAPI background tasks manager
-        user_id: User ID extracted from JWT token (dependency)
         db: Database session (dependency)
     
     Returns:
@@ -123,6 +125,9 @@ async def deploy(
     Validates Requirements:
         2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10
     """
+    # Temporary: Get user_id from request body
+    user_id = request.user_id
+    
     # Validate terraform_plan ownership
     plan_repo = TerraformPlanRepository(db)
     plan = await plan_repo.get_plan(request.terraform_plan_id)
@@ -201,14 +206,15 @@ async def deploy(
 async def destroy(
     request: DestroyRequest,
     background_tasks: BackgroundTasks,
-    user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """
     Trigger Terraform destroy operation.
     
+    Temporary: Accepts user_id in request body until JWT auth is implemented.
+    
     Flow:
-    1. Extract user_id from JWT token
+    1. Get user_id from request body (temporary workaround)
     2. Validate deployment ownership and existence
     3. Validate deployment status is SUCCESS
     4. Update deployment status to STARTED
@@ -216,9 +222,8 @@ async def destroy(
     6. Return 202 Accepted
     
     Args:
-        request: Destroy request with deployment_id
+        request: Destroy request with user_id and deployment_id
         background_tasks: FastAPI background tasks manager
-        user_id: User ID extracted from JWT token (dependency)
         db: Database session (dependency)
     
     Returns:
@@ -232,6 +237,9 @@ async def destroy(
     Validates Requirements:
         3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9
     """
+    # Temporary: Get user_id from request body
+    user_id = request.user_id
+    
     # Validate deployment ownership
     deployment_repo = DeploymentRepository(db)
     deployment = await deployment_repo.get_by_id(request.deployment_id, user_id)
@@ -298,7 +306,7 @@ async def destroy(
 @router.get("/deployment/{deployment_id}/status")
 async def get_deployment_status(
     deployment_id: uuid.UUID,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str,  # Temporary: from query param until JWT auth is implemented
     db: AsyncSession = Depends(get_db)
 ) -> DeploymentResponse:
     """

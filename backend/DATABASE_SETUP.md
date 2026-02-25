@@ -6,7 +6,7 @@ Add to `backend/.env.local`:
 
 ```env
 # Database Configuration
-DATABASE_URL=postgresql+asyncpg://postgres:ezbuilt-master@your-aurora-endpoint.region.rds.amazonaws.com:5432/ezbuilt
+DATABASE_URL=postgresql+asyncpg://postgres:your-password@your-aurora-endpoint.region.rds.amazonaws.com:5432/ezbuilt
 
 # AWS Configuration
 AWS_REGION=us-east-1

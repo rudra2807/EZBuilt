@@ -5,7 +5,7 @@
 1. **Update DATABASE_URL** in `backend/.env.local`:
 
 ```env
-DATABASE_URL=postgresql+asyncpg://postgres:ezbuilt-master@your-aurora-endpoint.region.rds.amazonaws.com:5432/ezbuilt
+DATABASE_URL=postgresql+asyncpg://postgres:your-password@your-aurora-endpoint.region.rds.amazonaws.com:5432/ezbuilt
 ```
 
 2. **Install dependencies**:

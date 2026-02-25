@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { saveAwsConnection, getAwsConnectionForUser } from "@/app/(app)/lib/saveConnection";
+// Removed Firestore imports - using backend API instead
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/(app)/context/AuthContext";
 
@@ -44,13 +44,24 @@ export default function ConnectAwsPage() {
 
         (async () => {
             try {
-                const existing = await getAwsConnectionForUser(user.sub);
+                // Check for existing AWS connection via backend API
+                const response = await fetch(`${API_BASE_URL}/api/user/${user.sub}/aws-connections`);
                 if (cancelled) return;
 
-                if (existing) {
-                    // User already connected - skip this screen
-                    router.push("/generate");
+                if (response.ok) {
+                    const data = await response.json();
+                    const activeConnections = data.connections?.filter(
+                        (conn: any) => conn.status === 'connected'
+                    );
+
+                    if (activeConnections && activeConnections.length > 0) {
+                        // User already connected - skip this screen
+                        router.push("/generate");
+                    } else {
+                        setCheckingExistingConnection(false);
+                    }
                 } else {
+                    // If check fails, still allow user to try the wizard
                     setCheckingExistingConnection(false);
                 }
             } catch (err) {
@@ -131,13 +142,8 @@ export default function ConnectAwsPage() {
 
             const data = await res.json();
 
-            console.log("before saveAwsConnection");
-            await saveAwsConnection({
-                userId,
-                externalId,
-                roleArn: data.role_arn ?? roleArn,
-            });
-            console.log("after saveAwsConnection");
+            // Connection is already saved by the backend API
+            console.log("AWS connection saved successfully by backend");
 
             setSuccessMsg(data.message || "AWS account connected successfully.");
             setPhase("connected");

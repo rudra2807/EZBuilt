@@ -3,8 +3,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from datetime import datetime
-import firebase_admin
-from firebase_admin import credentials
 from src.apis.routes_connection import router as connection_router
 from src.apis.routes_requirements import router as requirements_router
 from src.apis.routes_terraform import router as terraform_router

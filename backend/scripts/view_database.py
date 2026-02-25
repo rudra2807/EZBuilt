@@ -13,7 +13,7 @@ load_dotenv('.env.local')
 DATABASE_URL = os.getenv('DATABASE_URL', '')
 if not DATABASE_URL:
     print("❌ DATABASE_URL not found in .env.local")
-    print("Please add: DATABASE_URL=postgresql+asyncpg://postgres:ezbuilt-master@your-endpoint:5432/ezbuilt")
+    print("Please add: DATABASE_URL=postgresql+asyncpg://postgres:your-password@your-endpoint:5432/ezbuilt")
     exit(1)
 
 # Extract connection params from URL

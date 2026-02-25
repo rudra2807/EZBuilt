@@ -135,3 +135,31 @@ async def connect_account_manual(
             status=IntegrationStatus.FAILED
         )
         raise HTTPException(status_code=400, detail=f"Connection failed: {str(e)}")
+
+@router.get("/user/{user_id}/aws-connections")
+async def get_user_aws_connections(
+    user_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get all AWS connections for a user
+    """
+    integration_repo = AWSIntegrationRepository(db)
+
+    connections = await integration_repo.get_by_user_id(user_id)
+
+    # Convert to dict format for response
+    connection_list = []
+    for conn in connections:
+        connection_list.append({
+            "id": str(conn.id),
+            "user_id": conn.user_id,
+            "aws_account_id": conn.aws_account_id,
+            "external_id": conn.external_id,
+            "role_arn": conn.role_arn,
+            "status": conn.status.value,
+            "created_at": conn.created_at.isoformat() if conn.created_at else None,
+            "verified_at": conn.verified_at.isoformat() if conn.verified_at else None
+        })
+
+    return {"connections": connection_list}

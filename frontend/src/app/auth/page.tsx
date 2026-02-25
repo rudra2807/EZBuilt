@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/(app)/context/AuthContext";
 
-export default function AuthPage() {
+function AuthPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, loading } = useAuth();
@@ -13,6 +13,7 @@ export default function AuthPage() {
     // Redirect if already signed in
     useEffect(() => {
         if (!loading && user) {
+            console.log("user exists: " + user)
             router.replace("/connect-aws");
         }
     }, [loading, user, router]);
@@ -83,5 +84,17 @@ export default function AuthPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function AuthPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center">
+                <p className="text-xs text-slate-400">Loading...</p>
+            </div>
+        }>
+            <AuthPageContent />
+        </Suspense>
     );
 }

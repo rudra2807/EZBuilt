@@ -5,7 +5,7 @@ import os
 # Database URL from environment
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://postgres:ezbuilt-master@your-aurora-endpoint:5432/ezbuilt"
+    "postgresql+asyncpg://postgres:your-password@your-aurora-endpoint:5432/ezbuilt"
 )
 
 # Create async engine

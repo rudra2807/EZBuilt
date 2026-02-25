@@ -9,8 +9,7 @@ async def test_connection():
     database_url = os.getenv("DATABASE_URL")
     print(f"Testing connection to: {database_url}")
     
-    # Parse the URL
-    # postgresql+asyncpg://postgres:ezbuilt-master@ezbuilt-db.cg5akksckj8j.us-east-1.rds.amazonaws.com:5432/EZBuilt_Database
+    # Parse the URL from environment variable
     parts = database_url.replace("postgresql+asyncpg://", "").split("@")
     user_pass = parts[0].split(":")
     host_db = parts[1].split("/")

@@ -18,7 +18,7 @@
    - Port: `5432`
    - Maintenance database: `postgres`
    - Username: `postgres`
-   - Password: `ezbuilt-master`
+   - Password: `your-password`
    - Save password: ✓
 5. Click "Save"
 
@@ -47,7 +47,7 @@
    - Port: `5432`
    - Database: `ezbuilt`
    - Username: `postgres`
-   - Password: `ezbuilt-master`
+   - Password: `your-password`
 5. Click "Test Connection" (downloads driver if needed)
 6. Click "Finish"
 
@@ -74,7 +74,7 @@
 3. Enter connection details:
    - Host: `your-aurora-endpoint.region.rds.amazonaws.com`
    - User: `postgres`
-   - Password: `ezbuilt-master`
+   - Password: `your-password`
    - Port: `5432`
    - Database: `ezbuilt`
    - Connection name: `EZBuilt Aurora`
@@ -100,7 +100,7 @@ Download PostgreSQL client tools:
 
 ```bash
 psql -h your-aurora-endpoint.region.rds.amazonaws.com -U postgres -d ezbuilt
-# Enter password: ezbuilt-master
+# Enter password: your-password
 ```
 
 ### Common Commands
@@ -168,7 +168,7 @@ async def test():
         host='your-aurora-endpoint.region.rds.amazonaws.com',
         port=5432,
         user='postgres',
-        password='ezbuilt-master',
+        password='your-password',
         database='ezbuilt'
     )
     version = await conn.fetchval('SELECT version()')

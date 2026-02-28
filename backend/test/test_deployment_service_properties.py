@@ -2,8 +2,8 @@
 Property-based tests for deployment service functions.
 
 This test validates:
-- Property 16: ANSI Code Stripping (Validates: Requirements 8.7)
-- Property 17: Temporary Directory Cleanup (Validates: Requirements 5.12)
+- Property 16: ANSI Code Stripping
+- Property 17: Temporary Directory Cleanup
 
 Property 16: For any error message or output containing ANSI color codes,
 when stored in the database, all ANSI escape sequences should be removed,
@@ -105,8 +105,6 @@ async def test_property_ansi_code_stripping(text):
     
     For any text containing ANSI escape sequences, when strip_ansi_codes is called,
     the result should contain no ANSI escape sequences.
-    
-    **Validates: Requirements 8.7**
     """
     # Apply the strip_ansi_codes function
     result = strip_ansi_codes(text)
@@ -201,8 +199,6 @@ async def test_property_temporary_directory_cleanup_apply(scenario):
     For any deployment execution (apply), when the operation completes
     (success or failure), the temporary directory created for Terraform
     execution should be removed from the filesystem.
-    
-    **Validates: Requirements 5.12**
     """
     deployment_id = uuid.uuid4()
     terraform_plan_id = uuid.uuid4()
@@ -319,8 +315,6 @@ async def test_property_temporary_directory_cleanup_destroy(scenario):
     For any deployment execution (destroy), when the operation completes
     (success or failure), the temporary directory created for Terraform
     execution should be removed from the filesystem.
-    
-    **Validates: Requirements 5.12**
     """
     deployment_id = uuid.uuid4()
     role_arn = "arn:aws:iam::123456789012:role/TestRole"
@@ -402,8 +396,6 @@ async def test_s3_download_failure_handling():
     
     When S3 download fails with S3ServiceError, the deployment status
     should be updated to FAILED with the error message stored.
-    
-    **Validates: Requirements 8.1**
     """
     deployment_id = uuid.uuid4()
     terraform_plan_id = uuid.uuid4()
@@ -455,8 +447,6 @@ async def test_terraform_init_failure_handling():
     
     When terraform init fails, the deployment status should be updated
     to FAILED with the stderr output stored as error message.
-    
-    **Validates: Requirements 8.2**
     """
     deployment_id = uuid.uuid4()
     terraform_plan_id = uuid.uuid4()
@@ -524,8 +514,6 @@ async def test_terraform_plan_failure_handling():
     
     When terraform plan fails, the deployment status should be updated
     to FAILED with the stderr output stored as error message.
-    
-    **Validates: Requirements 8.3**
     """
     deployment_id = uuid.uuid4()
     terraform_plan_id = uuid.uuid4()
@@ -592,8 +580,6 @@ async def test_terraform_apply_failure_handling():
     
     When terraform apply fails, the deployment status should be updated
     to FAILED with the stderr output stored as error message.
-    
-    **Validates: Requirements 8.4**
     """
     deployment_id = uuid.uuid4()
     terraform_plan_id = uuid.uuid4()
@@ -661,8 +647,6 @@ async def test_terraform_destroy_failure_handling():
     
     When terraform destroy fails, the deployment status should be updated
     to DESTROY_FAILED with the stderr output stored as error message.
-    
-    **Validates: Requirements 8.5**
     """
     deployment_id = uuid.uuid4()
     role_arn = "arn:aws:iam::123456789012:role/TestRole"
@@ -721,8 +705,6 @@ async def test_unexpected_exception_handling_apply():
     
     When an unexpected exception occurs during deployment, the status
     should be updated to FAILED with the exception message stored.
-    
-    **Validates: Requirements 8.6**
     """
     deployment_id = uuid.uuid4()
     terraform_plan_id = uuid.uuid4()
@@ -768,8 +750,6 @@ async def test_unexpected_exception_handling_destroy():
     
     When an unexpected exception occurs during destroy, the status
     should be updated to DESTROY_FAILED with the exception message stored.
-    
-    **Validates: Requirements 8.6**
     """
     deployment_id = uuid.uuid4()
     role_arn = "arn:aws:iam::123456789012:role/TestRole"

@@ -188,6 +188,39 @@ class TerraformPlanRepository:
             .order_by(TerraformPlan.created_at.desc())
         )
         return result.scalars().all()
+    
+    async def get_user_plans_with_deployments(self, user_id: str) -> List[TerraformPlan]:
+        """Get all plans for a user with eager-loaded deployments"""
+        result = await self.session.execute(
+            select(TerraformPlan)
+            .options(selectinload(TerraformPlan.deployments))
+            .where(TerraformPlan.user_id == user_id)
+            .order_by(TerraformPlan.created_at.desc())
+        )
+        plans = result.scalars().all()
+        
+        # Sort deployments within each plan by created_at DESC
+        for plan in plans:
+            plan.deployments.sort(key=lambda d: d.created_at, reverse=True)
+        
+        return plans
+
+    async def get_user_plans_with_deployments(self, user_id: str) -> List[TerraformPlan]:
+        """Get all plans for a user with eager-loaded deployments"""
+        result = await self.session.execute(
+            select(TerraformPlan)
+            .options(selectinload(TerraformPlan.deployments))
+            .where(TerraformPlan.user_id == user_id)
+            .order_by(TerraformPlan.created_at.desc())
+        )
+        plans = result.scalars().all()
+
+        # Sort deployments within each plan by created_at DESC
+        for plan in plans:
+            plan.deployments.sort(key=lambda d: d.created_at, reverse=True)
+
+        return plans
+
 
 
 class DeploymentRepository:

@@ -183,3 +183,57 @@ async def get_terraform_resources(
         "deployed_at": latest_deployment.completed_at.isoformat() if latest_deployment.completed_at else None,
         "can_destroy": True
     }
+
+
+@router.get("/user/{user_id}/history")
+async def get_user_history(
+    user_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get all terraform plans with their deployments for a user
+    """
+    try:
+        repo = TerraformPlanRepository(db)
+        plans = await repo.get_user_plans_with_deployments(user_id)
+        
+        # Transform to response schema
+        plans_data = []
+        for plan in plans:
+            # Calculate deployment count and latest status
+            deployment_count = len(plan.deployments)
+            latest_deployment_status = None
+            if plan.deployments:
+                # Deployments are already sorted by created_at DESC
+                latest_deployment_status = plan.deployments[0].status.value
+            
+            # Transform deployments
+            deployments_data = []
+            for deployment in plan.deployments:
+                deployments_data.append({
+                    "id": str(deployment.id),
+                    "status": deployment.status.value,
+                    "created_at": deployment.created_at.isoformat() if deployment.created_at else None,
+                    "updated_at": deployment.updated_at.isoformat() if deployment.updated_at else None,
+                    "completed_at": deployment.completed_at.isoformat() if deployment.completed_at else None,
+                    "error_message": deployment.error_message
+                })
+            
+            plans_data.append({
+                "id": str(plan.id),
+                "user_id": plan.user_id,
+                "original_requirements": plan.original_requirements,
+                "created_at": plan.created_at.isoformat() if plan.created_at else None,
+                "deployment_count": deployment_count,
+                "latest_deployment_status": latest_deployment_status,
+                "deployments": deployments_data
+            })
+        
+        return {"plans": plans_data}
+    
+    except Exception as e:
+        # Log the error for debugging
+        import logging
+        logging.error(f"Error fetching user history: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve deployment history")
+

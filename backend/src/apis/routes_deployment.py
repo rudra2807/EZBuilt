@@ -121,9 +121,6 @@ async def deploy(
     Raises:
         HTTPException 404: Terraform plan or AWS connection not found
         HTTPException 400: AWS connection not in connected status
-    
-    Validates Requirements:
-        2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10
     """
     # Temporary: Get user_id from request body
     user_id = request.user_id
@@ -233,9 +230,6 @@ async def destroy(
         HTTPException 404: Deployment not found
         HTTPException 403: Deployment does not belong to user
         HTTPException 400: Deployment status is not SUCCESS
-    
-    Validates Requirements:
-        3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9
     """
     # Temporary: Get user_id from request body
     user_id = request.user_id
@@ -328,9 +322,6 @@ async def get_deployment_status(
     Raises:
         HTTPException 404: Deployment not found
         HTTPException 403: Deployment does not belong to user
-    
-    Validates Requirements:
-        4.1, 4.2, 4.3, 4.4, 4.5
     """
     deployment_repo = DeploymentRepository(db)
     deployment = await deployment_repo.get_by_id(deployment_id, user_id)

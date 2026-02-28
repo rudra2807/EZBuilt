@@ -1,7 +1,6 @@
 /**
  * Unit Test for Deployment API Request Payload
  * Feature: firebase-removal-and-consolidation
- * Validates: Requirements 9.4, 9.5
  *
  * This test verifies that:
  * 1. Deployment request includes terraform_plan_id and aws_connection_id

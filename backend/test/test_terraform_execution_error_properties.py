@@ -2,8 +2,8 @@
 Property-based tests for Terraform execution error handling.
 
 This test validates:
-- Property 14: Error Status on Terraform Command Failure (Validates: Requirements 8.2, 8.3, 8.4)
-- Property 15: Error Status on Unexpected Exceptions (Validates: Requirements 8.6)
+- Property 14: Error Status on Terraform Command Failure
+- Property 15: Error Status on Unexpected Exceptions
 
 Property 14: For any deployment, when any Terraform command (init, plan, apply) fails,
 the deployment status should be updated to "failed" with the stderr output stored as
@@ -76,8 +76,6 @@ async def test_property_terraform_command_failure_apply(failure):
     For any deployment, when any Terraform command (init, plan, apply) fails,
     the deployment status should be updated to "failed" with the stderr output
     stored as the error message.
-    
-    **Validates: Requirements 8.2, 8.3, 8.4**
     """
     command_name, error_message = failure
     
@@ -182,8 +180,6 @@ async def test_property_terraform_destroy_failure(error_message):
     For any deployment, when terraform destroy fails, the deployment status
     should be updated to "destroy_failed" with the stderr output stored as
     the error message.
-    
-    **Validates: Requirements 8.5**
     """
     deployment_id = uuid.uuid4()
     role_arn = f"arn:aws:iam::{uuid.uuid4().hex[:12]}:role/TestRole"
@@ -301,8 +297,6 @@ async def test_property_unexpected_exception_apply(scenario):
     For any deployment, when an unexpected exception occurs during execution,
     the deployment status should be updated to "failed" with the exception
     message stored.
-    
-    **Validates: Requirements 8.6**
     """
     exception_type, exception_message, failure_point = scenario
     
@@ -388,8 +382,6 @@ async def test_property_unexpected_exception_destroy(scenario):
     For any deployment, when an unexpected exception occurs during destroy,
     the deployment status should be updated to "destroy_failed" with the
     exception message stored.
-    
-    **Validates: Requirements 8.6**
     """
     exception_type, exception_message, failure_point = scenario
     

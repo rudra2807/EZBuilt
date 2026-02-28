@@ -2,9 +2,9 @@
 Property-based tests for S3 integration.
 
 This test validates:
-- Property 11: S3 Prefix Usage (Validates: Requirements 5.2)
-- Property 12: S3 File Download Completeness (Validates: Requirements 5.3)
-- Property 13: Error Status on S3 Failure (Validates: Requirements 6.2)
+- Property 11: S3 Prefix Usage
+- Property 12: S3 File Download Completeness
+- Property 13: Error Status on S3 Failure
 
 Property 11: For any deployment, when downloading Terraform files, the system
 should use the s3_prefix value from the associated terraform_plan record.
@@ -77,8 +77,6 @@ async def test_property_s3_prefix_usage(s3_prefix):
     
     For any deployment, when downloading Terraform files, the system should
     use the s3_prefix value from the associated terraform_plan record.
-    
-    **Validates: Requirements 5.2**
     """
     deployment_id = uuid.uuid4()
     terraform_plan_id = uuid.uuid4()
@@ -188,8 +186,6 @@ async def test_property_s3_file_download_completeness(s3_prefix, files):
     For any S3 prefix containing Terraform files, when downloading to a
     temporary directory, all files under that prefix should be downloaded
     to the local directory.
-    
-    **Validates: Requirements 5.3**
     """
     bucket = "test-bucket"
     tmp_dir = tempfile.mkdtemp()
@@ -289,8 +285,6 @@ async def test_property_error_status_on_s3_failure(s3_prefix, error_message):
     For any deployment, when S3 download fails with an S3ServiceError,
     the deployment status should be updated to "failed" with the error
     message stored.
-    
-    **Validates: Requirements 6.2**
     """
     deployment_id = uuid.uuid4()
     terraform_plan_id = uuid.uuid4()
@@ -367,8 +361,6 @@ async def test_s3_prefix_usage_integration():
     This test creates a real terraform_plan record with a specific s3_prefix
     and verifies that the deployment service uses that exact prefix when
     downloading files from S3.
-    
-    **Validates: Requirements 5.2**
     """
     # Create database session
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)

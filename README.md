@@ -57,11 +57,11 @@ The result is reproducible, boring infrastructure. Exactly what you want.
 
 ---
 
-### Stage 3: Post Provision Configuration (Ansible - In Progress)
+### Stage 3: Post Provision Configuration (Ansible - Planned)
 
 Infrastructure alone is not enough.
 
-EZBuilt is actively integrating Ansible to handle post provisioning configuration such as:
+EZBuilt will integrate Ansible to handle post provisioning configuration such as:
 
 - Server hardening and baseline security
 - Application runtime setup
@@ -69,7 +69,7 @@ EZBuilt is actively integrating Ansible to handle post provisioning configuratio
 - Consistent configuration across environments
 
 Terraform handles what gets created.  
-Ansible handles how it is configured.
+Ansible will handle how it is configured.
 
 This separation keeps the system clean, flexible, and production ready.
 
@@ -111,23 +111,50 @@ This is a developer experience platform, not a chatbot.
 
 ---
 
-## Current Capabilities
+## Current Status
 
-- AWS focused infrastructure generation
-- Secure IAM role based deployment
-- Terraform based provisioning
-- Deployment tracking and destroy workflows
-- Early Ansible integration for configuration management
+### ✅ Implemented Features
+
+- **Authentication:** AWS Cognito with Amazon Login, user sync to PostgreSQL
+- **AWS Connection:** CloudFormation-based role provisioning with External ID security
+- **Infrastructure Generation:** Natural language → Terraform code with validation
+- **Terraform Management:** Code editing, revalidation, S3 storage
+- **Deployment History:** Comprehensive view with status tracking, filtering, and search
+- **State Management:** Terraform state upload/download from S3
+
+### ⚠️ Known Issues
+
+- **JWT Authentication:** Backend deployment endpoints return 501 (not yet implemented)
+- **Token Verification:** Frontend decodes tokens but doesn't verify signatures
+- **Token Refresh:** No automatic token refresh (users must re-login on expiry)
+
+See [CURRENT_STATUS.md](./CURRENT_STATUS.md) for detailed status and roadmap.
 
 ---
 
 ## Roadmap
 
-- Full Ansible based configuration workflows
-- Multi cloud support across AWS, GCP, and Azure
-- Cost aware infrastructure suggestions
-- Policy driven security and compliance checks
-- Infrastructure drift detection and reconciliation
+### Immediate Priorities (P0)
+
+- JWT authentication middleware implementation
+- Token signature verification
+- Token refresh logic
+
+### High Value Features (P1)
+
+- Cost estimation before deployment
+- Terraform plan preview (dry-run)
+- Real-time deployment logs (WebSocket/SSE)
+- Deployment rollback capability
+
+### Future Enhancements (P2+)
+
+- Security scanning (tfsec, Checkov)
+- Infrastructure drift detection
+- Template library
+- Compliance presets (HIPAA, SOC2, PCI-DSS)
+- Multi-cloud support (GCP, Azure)
+- Full Ansible integration
 
 ---
 

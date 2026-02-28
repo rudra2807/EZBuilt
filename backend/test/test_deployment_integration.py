@@ -6,8 +6,6 @@ This test validates the complete deployment flow from API request to database up
 - Complete destroy flow from API request to database update
 - Deployment status transitions through state machine
 - Mock S3 downloads and Terraform subprocess calls
-
-**Validates: Requirements 5.1, 5.6, 5.7, 5.9, 5.10**
 """
 
 import pytest
@@ -77,8 +75,6 @@ async def test_complete_deploy_flow():
     2. API validates request and creates deployment record
     3. Background task executes Terraform apply
     4. Database is updated with final status
-    
-    **Validates: Requirements 5.1, 5.6, 5.7**
     """
     # Create database session
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
@@ -191,8 +187,6 @@ async def test_complete_destroy_flow():
     2. API validates deployment status is SUCCESS
     3. Background task executes Terraform destroy
     4. Database is updated with final status
-    
-    **Validates: Requirements 5.9, 5.10**
     """
     # Create database session
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
@@ -308,8 +302,6 @@ async def test_deployment_status_transitions():
     - STARTED → RUNNING → FAILED (for failed apply)
     - SUCCESS → STARTED → RUNNING → DESTROYED (for successful destroy)
     - SUCCESS → STARTED → RUNNING → DESTROY_FAILED (for failed destroy)
-    
-    **Validates: Requirements 5.1, 5.6, 5.7, 5.9, 5.10**
     """
     # Create database session
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
@@ -444,8 +436,6 @@ async def test_deploy_flow_with_s3_failure():
     
     Verifies that S3 failures are properly handled and deployment
     status is updated to FAILED with error message.
-    
-    **Validates: Requirements 5.1, 5.7**
     """
     # Create database session
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
@@ -510,8 +500,6 @@ async def test_deploy_flow_with_terraform_failure():
     
     Verifies that Terraform failures are properly handled and deployment
     status is updated to FAILED with error message.
-    
-    **Validates: Requirements 5.1, 5.7**
     """
     # Create database session
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
@@ -632,8 +620,6 @@ async def test_property_deployment_state_transitions(operations):
     - Successful apply transitions to "success"
     - Failed apply transitions to "failed"
     - Destroy from "success" transitions through "started" → "running" → "destroyed" or "destroy_failed"
-    
-    **Validates: Requirements 2.5, 3.4, 5.1, 5.6, 5.7, 5.9, 5.10**
     """
     # Create database session
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
@@ -822,8 +808,6 @@ async def test_property_completed_timestamp_on_terminal_states(terminal_status, 
     
     For any deployment that reaches a terminal state (success, failed, destroyed, destroy_failed),
     the completed_at timestamp should be set to a non-null value.
-    
-    **Validates: Requirements 5.11**
     """
     # Create database session
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)

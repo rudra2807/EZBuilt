@@ -1,7 +1,6 @@
 /**
  * Unit Test for AWS Connection Loading
  * Feature: firebase-removal-and-consolidation
- * Validates: Requirements 9.7
  *
  * This test verifies that:
  * 1. AWS connections are loaded from backend API

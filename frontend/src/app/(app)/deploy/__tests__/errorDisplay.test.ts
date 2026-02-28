@@ -1,7 +1,6 @@
 /**
  * Unit Test for Error Message Display
  * Feature: firebase-removal-and-consolidation
- * Validates: Requirements 9.6
  *
  * This test verifies that:
  * 1. Error messages are displayed when API returns errors

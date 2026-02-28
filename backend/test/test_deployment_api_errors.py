@@ -6,8 +6,6 @@ Tests error handling for:
 - 400 errors for invalid requests
 - 403 errors for unauthorized access
 - Response structure for status endpoint
-
-Validates Requirements: 2.8, 2.9, 2.10, 3.7, 3.8, 3.9, 4.4, 4.5
 """
 
 import pytest
@@ -52,8 +50,6 @@ async def create_db_session():
 async def test_deploy_terraform_plan_not_found():
     """
     Test deploy endpoint returns 404 when terraform_plan_id does not exist.
-    
-    Validates: Requirement 2.9
     """
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
     AsyncSessionLocal = async_sessionmaker(
@@ -116,8 +112,6 @@ async def test_deploy_terraform_plan_not_found():
 async def test_deploy_aws_connection_not_found():
     """
     Test deploy endpoint returns 404 when aws_connection_id does not exist.
-    
-    Validates: Requirement 2.10
     """
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
     AsyncSessionLocal = async_sessionmaker(
@@ -184,8 +178,6 @@ async def test_deploy_aws_connection_not_found():
 async def test_deploy_aws_connection_not_connected():
     """
     Test deploy endpoint returns 400 when AWS connection status is not CONNECTED.
-    
-    Validates: Requirement 2.8
     """
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
     AsyncSessionLocal = async_sessionmaker(
@@ -262,8 +254,6 @@ async def test_deploy_aws_connection_not_connected():
 async def test_destroy_deployment_not_found():
     """
     Test destroy endpoint returns 404 when deployment_id does not exist.
-    
-    Validates: Requirement 3.9
     """
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
     AsyncSessionLocal = async_sessionmaker(
@@ -314,8 +304,6 @@ async def test_destroy_deployment_not_found():
 async def test_destroy_deployment_invalid_status():
     """
     Test destroy endpoint returns 400 when deployment status is not SUCCESS.
-    
-    Validates: Requirement 3.8
     """
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
     AsyncSessionLocal = async_sessionmaker(
@@ -400,8 +388,6 @@ async def test_destroy_deployment_invalid_status():
 async def test_destroy_deployment_unauthorized():
     """
     Test destroy endpoint returns 403 when user tries to destroy another user's deployment.
-    
-    Validates: Requirement 3.7
     """
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
     AsyncSessionLocal = async_sessionmaker(
@@ -492,8 +478,6 @@ async def test_destroy_deployment_unauthorized():
 async def test_status_deployment_not_found():
     """
     Test status endpoint returns 404 when deployment_id does not exist.
-    
-    Validates: Requirement 4.5
     """
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
     AsyncSessionLocal = async_sessionmaker(
@@ -540,8 +524,6 @@ async def test_status_deployment_not_found():
 async def test_status_deployment_unauthorized():
     """
     Test status endpoint returns 403 when user tries to view another user's deployment.
-    
-    Validates: Requirement 4.4
     """
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
     AsyncSessionLocal = async_sessionmaker(
@@ -628,8 +610,6 @@ async def test_status_deployment_unauthorized():
 async def test_status_response_structure():
     """
     Test status endpoint returns correct response structure with all required fields.
-    
-    Validates: Requirements 4.3, 4.5
     """
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
     AsyncSessionLocal = async_sessionmaker(
@@ -720,8 +700,6 @@ async def test_status_response_structure():
 async def test_status_response_with_error():
     """
     Test status endpoint returns correct response structure for failed deployment.
-    
-    Validates: Requirements 4.3, 4.5
     """
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
     AsyncSessionLocal = async_sessionmaker(

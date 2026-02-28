@@ -59,8 +59,6 @@ async def test_property_deployment_initial_state(user_suffix, plan_suffix):
     For any valid deploy request (with valid terraform_plan_id and aws_connection_id 
     belonging to the user), when a deployment is created, the initial status should 
     always be "started".
-    
-    **Validates: Requirements 2.5**
     """
     # Create a fresh database session for this test iteration
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
@@ -149,8 +147,6 @@ async def test_property_aws_connection_validation(user_suffix, plan_suffix, aws_
     
     For any deploy request, when the aws_connection status is not "connected", 
     the system should reject the request with a 400 Bad Request error.
-    
-    **Validates: Requirements 2.4**
     """
     # Create a fresh database session for this test iteration
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
@@ -259,8 +255,6 @@ async def test_property_destroy_status_validation(user_suffix, plan_suffix, depl
     For any destroy request, when the deployment status is not "success", 
     the system should reject the request with a 400 Bad Request error 
     indicating the current status.
-    
-    **Validates: Requirements 3.3, 3.8**
     """
     # Create a fresh database session for this test iteration
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)
@@ -377,8 +371,6 @@ async def test_property_unauthorized_access_returns_403(owner_suffix, other_suff
     
     For any user attempting to access (view or destroy) a deployment that does 
     not belong to them, the system should return a 403 Forbidden error.
-    
-    **Validates: Requirements 3.7, 4.4**
     """
     # Create a fresh database session for this test iteration
     engine = create_async_engine(DATABASE_URL, echo=False, poolclass=None)

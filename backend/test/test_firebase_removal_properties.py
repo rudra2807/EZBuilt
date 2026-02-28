@@ -66,8 +66,6 @@ async def test_property_deployment_persistence_postgresql(random_suffix):
     and aws_connection_id, after the deployment is created, querying the PostgreSQL 
     deployments table should return a record with matching IDs and status STARTED.
     
-    **Validates: Requirements 17.1**
-    
     Feature: firebase-removal-and-consolidation, Property 1: Deployment persistence in PostgreSQL
     """
     # Generate unique IDs for this test run to avoid conflicts
@@ -167,8 +165,6 @@ async def test_property_terraform_plan_persistence_postgresql(random_suffix, req
     after the plan is created, querying the PostgreSQL terraform_plans table should return a 
     record with matching user_id and requirements.
     
-    **Validates: Requirements 17.2**
-    
     Feature: firebase-removal-and-consolidation, Property 2: Terraform plan persistence in PostgreSQL
     """
     # Generate unique IDs for this test run to avoid conflicts
@@ -257,8 +253,6 @@ async def test_property_aws_connection_persistence_postgresql(random_suffix, ext
     For any valid AWS connection creation with user_id and external_id, after the 
     connection is created, querying the PostgreSQL aws_integrations table should 
     return a record with matching user_id and external_id.
-    
-    **Validates: Requirements 17.3**
     
     Feature: firebase-removal-and-consolidation, Property 3: AWS connection persistence in PostgreSQL
     """

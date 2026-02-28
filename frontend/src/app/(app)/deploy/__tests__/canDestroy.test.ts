@@ -2,7 +2,6 @@
  * Property-Based Test for canDestroy Logic
  * Feature: firebase-removal-and-consolidation
  * Property 4: canDestroy flag correctness
- * Validates: Requirements 9.8
  *
  * This test verifies that the canDestroy flag is true if and only if
  * the deployment status equals 'success'.

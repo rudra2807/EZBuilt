@@ -1,9 +1,6 @@
 """
 Property-based tests for DeploymentRepository user isolation.
 
-This test validates Property 1: User Resource Isolation
-Validates: Requirements 2.2, 2.3, 3.2, 4.2, 7.1, 7.2, 7.3
-
 Property: For any user and any resource type (deployment, terraform_plan, aws_integration),
 when querying resources by user_id, the system should only return resources that belong
 to that specific user and never expose resources belonging to other users.
@@ -59,8 +56,6 @@ async def test_property_user_resource_isolation(db_session):
     For any two distinct users, when one user queries for deployments,
     they should only see their own deployments and never see deployments
     belonging to the other user.
-    
-    Validates: Requirements 2.2, 2.3, 3.2, 4.2, 7.1, 7.2, 7.3
     """
     # Create two distinct users
     user1_id = f"test-user-{uuid.uuid4()}"
@@ -213,8 +208,6 @@ async def test_property_user_cascade_delete(db_session):
     
     For any user with associated deployments, when the user is deleted from the database,
     all deployments belonging to that user should also be deleted (CASCADE behavior).
-    
-    **Validates: Requirements 1.6**
     """
     # Create a user
     user_id = f"test-user-cascade-{uuid.uuid4()}"
@@ -300,8 +293,6 @@ async def test_property_plan_cascade_delete(db_session):
     
     For any terraform_plan with associated deployments, when the plan is deleted from the database,
     all deployments referencing that plan should also be deleted (CASCADE behavior).
-    
-    **Validates: Requirements 1.7**
     """
     # Create a user
     user_id = f"test-user-plan-cascade-{uuid.uuid4()}"
@@ -389,8 +380,6 @@ async def test_property_connection_set_null(db_session):
     For any deployment with an associated aws_integration, when the aws_integration is deleted
     from the database, the deployment's aws_connection_id should be set to NULL (SET NULL behavior)
     and the deployment record should remain.
-    
-    **Validates: Requirements 1.8**
     """
     # Create a user
     user_id = f"test-user-conn-null-{uuid.uuid4()}"
